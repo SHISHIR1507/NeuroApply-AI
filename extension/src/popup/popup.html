@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroApply AI</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="popup-logo">
+        <span class="logo-icon">🧠</span>
+        <h1>NeuroApply AI</h1>
+      </div>
+      <div id="statusIndicator" class="status-indicator status-disconnected">
+        <span class="status-dot"></span>
+        <span class="status-text">Disconnected</span>
+      </div>
+    </header>
+
+    <!-- Auth Section (shown when not logged in) -->
+    <section id="authSection" class="section">
+      <h2>Sign In</h2>
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" required placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" required placeholder="••••••••" minlength="8">
+        </div>
+        <button type="submit" id="loginBtn" class="btn btn-primary">Sign In</button>
+        <p class="auth-toggle">
+          No account? <a href="#" id="showRegister">Sign Up</a>
+        </p>
+      </form>
+      <form id="registerForm" class="auth-form hidden">
+        <div class="form-group">
+          <label for="registerName">Full Name</label>
+          <input type="text" id="registerName" required placeholder="John Doe">
+        </div>
+        <div class="form-group">
+          <label for="registerEmail">Email</label>
+          <input type="email" id="registerEmail" required placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label for="registerPassword">Password</label>
+          <input type="password" id="registerPassword" required placeholder="••••••••" minlength="8">
+        </div>
+        <button type="submit" id="registerBtn" class="btn btn-primary">Create Account</button>
+        <p class="auth-toggle">
+          Have an account? <a href="#" id="showLogin">Sign In</a>
+        </p>
+      </form>
+      <p id="authError" class="error-text hidden"></p>
+    </section>
+
+    <!-- Main Section (shown when logged in) -->
+    <section id="mainSection" class="section hidden">
+      <!-- Quick Profile -->
+      <div class="card">
+        <h3>Quick Profile</h3>
+        <div class="profile-fields">
+          <div class="form-group compact">
+            <label>Experience</label>
+            <input type="number" id="profileYoe" placeholder="Years" min="0" max="50">
+          </div>
+          <div class="form-group compact">
+            <label>Current Title</label>
+            <input type="text" id="profileTitle" placeholder="Software Engineer">
+          </div>
+          <div class="form-group compact">
+            <label>Expected Salary</label>
+            <input type="text" id="profileSalary" placeholder="$120,000">
+          </div>
+          <div class="form-group compact">
+            <label>Notice Period</label>
+            <input type="text" id="profileNotice" placeholder="2 weeks">
+          </div>
+          <div class="form-group compact">
+            <label>Location</label>
+            <input type="text" id="profileLocation" placeholder="San Francisco, CA">
+          </div>
+        </div>
+        <button id="saveProfileBtn" class="btn btn-secondary">Save Profile</button>
+      </div>
+
+      <!-- Resume Upload -->
+      <div class="card">
+        <h3>Resume</h3>
+        <div id="resumeStatus" class="resume-status">
+          <p class="muted">No resume uploaded yet</p>
+        </div>
+        <label for="resumeUpload" class="btn btn-secondary upload-btn">
+          📄 Upload Resume
+        </label>
+        <input type="file" id="resumeUpload" accept=".pdf,.docx,.doc,.txt" class="hidden">
+      </div>
+
+      <!-- Stats -->
+      <div class="card stats-card">
+        <div class="stat">
+          <span class="stat-value" id="statFieldsResolved">0</span>
+          <span class="stat-label">Fields Resolved</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="statCacheHits">0</span>
+          <span class="stat-label">Cache Hits</span>
+        </div>
+      </div>
+
+      <!-- Logout -->
+      <button id="logoutBtn" class="btn btn-ghost">Sign Out</button>
+    </section>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+/* NeuroApply AI — Content Script Styles */
+
+/* ------------------------------------------------------------------
+   Autofill visual feedback
+   ------------------------------------------------------------------ */
+
+/* Field that was successfully filled */
+.neuroapply-filled {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2) !important;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Animation on fill */
+.neuroapply-filling {
+  animation: neuroapply-pulse 0.6s ease-out;
+}
+
+@keyframes neuroapply-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+  }
+}
+
+/* Field that needs user attention */
+.neuroapply-unresolved {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2) !important;
+}
+
+/* ------------------------------------------------------------------
+   Notification toast
+   ------------------------------------------------------------------ */
+
+.neuroapply-notification {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999999;
+  animation: neuroapply-slide-in 0.3s ease-out;
+}
+
+.neuroapply-notification-exit {
+  animation: neuroapply-slide-out 0.3s ease-in forwards;
+}
+
+.neuroapply-notification-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #e2e8f0;
+  border-radius: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+}
+
+.neuroapply-notification-icon {
+  font-size: 16px;
+}
+
+.neuroapply-notification-text {
+  white-space: nowrap;
+}
+
+@keyframes neuroapply-slide-in {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes neuroapply-slide-out {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+}

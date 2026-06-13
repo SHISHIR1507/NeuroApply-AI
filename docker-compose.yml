@@ -1,0 +1,68 @@
+version: "3.9"
+
+services:
+  # ------------------------------------------------------------------
+  # PostgreSQL with pgvector extension
+  # ------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: neuroapply-postgres
+    environment:
+      POSTGRES_DB: neuroapply
+      POSTGRES_USER: neuroapply
+      POSTGRES_PASSWORD: neuroapply_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuroapply -d neuroapply"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ------------------------------------------------------------------
+  # Redis — hot path cache
+  # ------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: neuroapply-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ------------------------------------------------------------------
+  # FastAPI Backend
+  # ------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: neuroapply-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://neuroapply:neuroapply_dev@postgres:5432/neuroapply
+      DATABASE_URL_SYNC: postgresql://neuroapply:neuroapply_dev@postgres:5432/neuroapply
+      REDIS_URL: redis://redis:6379/0
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-nvapi-placeholder}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-change-in-production}
+      DEBUG: "true"
+      CORS_ORIGINS: '["chrome-extension://localhost","http://localhost:3000","http://localhost:5173"]'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app/app  # Hot reload in dev
+
+volumes:
+  postgres_data:
+  redis_data:

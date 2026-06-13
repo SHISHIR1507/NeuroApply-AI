@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "NeuroApply AI",
+  "version": "0.1.0",
+  "description": "Intelligent job application assistant — autofills forms using your profile and resume data.",
+  
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  
+  "host_permissions": [
+    "*://*.linkedin.com/*",
+    "http://localhost:8000/*"
+  ],
+  
+  "background": {
+    "service_worker": "src/background/background.js",
+    "type": "module"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["*://*.linkedin.com/*"],
+      "js": [
+        "src/content/fieldExtractor.js",
+        "src/content/autofill.js",
+        "src/content/content.js"
+      ],
+      "css": ["src/content/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "NeuroApply AI"
+  },
+  
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
