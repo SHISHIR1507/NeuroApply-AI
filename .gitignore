@@ -51,6 +51,9 @@ frontend/.env.production
 .coverage
 htmlcov/
 
+# Claude Code local context — never commit
+.claude/
+
 # Temporary
 *.tmp
 *.bak
