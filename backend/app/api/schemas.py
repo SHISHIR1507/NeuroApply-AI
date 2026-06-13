@@ -47,6 +47,7 @@ class ProfileResponse(BaseModel):
     years_of_experience: Optional[int] = None
     current_title: Optional[str] = None
     current_company: Optional[str] = None
+    current_salary: Optional[str] = None
     expected_salary: Optional[str] = None
     notice_period: Optional[str] = None
     location: Optional[str] = None
@@ -72,6 +73,7 @@ class ProfileUpdateRequest(BaseModel):
     years_of_experience: Optional[int] = None
     current_title: Optional[str] = None
     current_company: Optional[str] = None
+    current_salary: Optional[str] = None
     expected_salary: Optional[str] = None
     notice_period: Optional[str] = None
     location: Optional[str] = None

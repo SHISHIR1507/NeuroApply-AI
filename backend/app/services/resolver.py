@@ -17,6 +17,7 @@ Observability:
 """
 
 import json
+import random
 import time
 from typing import Optional, Union
 from uuid import UUID
@@ -66,7 +67,7 @@ def _apply_default_rules(label: str, profile: Optional[dict] = None) -> Optional
         return "3"
 
     if any(kw in lowered for kw in _PROFICIENCY_KEYWORDS):
-        return "8"
+        return str(random.randint(8, 10))
 
     if any(kw in lowered for kw in _ACADEMIC_KEYWORDS):
         return "1"
@@ -75,11 +76,12 @@ def _apply_default_rules(label: str, profile: Optional[dict] = None) -> Optional
 
 
 _LLM_SYSTEM_PROMPT = (
-    "You are filling a job application form field on behalf of the user. "
-    "Reply with ONLY the answer value — no explanation, no extra text. "
-    "Keep answers concise: numbers for numeric fields, Yes/No for boolean, "
-    "short phrases for text. "
-    "If the profile does not contain enough information to answer, reply exactly: null"
+    "You fill job application form fields. Reply with ONLY the answer — no explanation, no units.\n"
+    "- Skill/proficiency rating (any scale): reply 8\n"
+    "- Yes/No: answer based on profile\n"
+    "- Dropdown: pick the best matching option exactly as written\n"
+    "- Number field: plain digits only, no commas or text\n"
+    "- If truly no relevant info exists: reply null"
 )
 
 
@@ -97,9 +99,10 @@ async def _llm_infer_answer(
 
     options_line = f"\nAvailable options: {', '.join(str(o) for o in options)}" if options else ""
 
+    number_hint = " (return a plain number only, no units)" if field_type == "number" else ""
     user_prompt = (
         f"Form field: {label}\n"
-        f"Field type: {field_type}{options_line}\n\n"
+        f"Field type: {field_type}{number_hint}{options_line}\n\n"
         f"User profile:\n{json.dumps(profile_clean, default=str, indent=2)}"
     )
 
@@ -126,10 +129,27 @@ async def _llm_infer_answer(
 PROFILE_DIRECT_FIELDS = {
     "full_name", "email", "phone", "location",
     "years_of_experience", "current_title", "current_company",
-    "expected_salary", "notice_period", "work_authorization",
+    "current_salary", "expected_salary", "notice_period", "work_authorization",
     "willing_to_relocate", "requires_sponsorship",
     "linkedin_url", "github_url", "portfolio_url",
 }
+
+
+import re as _re
+
+def _clean_profile_value(canonical_key: str, raw_value) -> str:
+    """Post-process profile values before returning them as form answers."""
+    value = str(raw_value).strip()
+    if canonical_key in ("expected_salary", "current_salary"):
+        # Convert "6 LPA" → "600000", "12.5 LPA" → "1250000"
+        m = _re.search(r'(\d+(?:\.\d+)?)\s*(?:lpa|lakh|l\b)', value, _re.IGNORECASE)
+        if m:
+            return str(int(float(m.group(1)) * 100000))
+        # Already a plain number
+        m = _re.search(r'(\d+(?:\.\d+)?)', value)
+        if m:
+            return m.group(1)
+    return value
 
 
 async def _get_profile(db: AsyncSession, user_id: UUID) -> Optional[UserProfile]:
@@ -220,197 +240,98 @@ async def resolve_single_field(
 ) -> dict:
     """
     Resolve a single form field to an answer.
-    Returns {value, source, confidence, canonical_key}.
+
+    Resolution chain:
+      1. Redis cache          — sub-ms, free
+      2. Structured profile   — direct DB column for known field types
+      3. Answer history       — previously corrected/answered questions
+      4. LLM inference        — semantic understanding using full profile context
+      5. Unknown              — needs manual input
     """
     field_hash = generate_field_hash(label)
-    latency_breakdown = {}
-    _cached_profile: Optional[dict] = None  # shared across steps that need it
+    t_start = time.perf_counter()
 
-    # ----- Step 1: Redis Cache (sub-ms) -----
-    with LatencyTimer("cache_lookup", logger, field_label=label) as t:
-        with traced_span("cache_lookup", field_label=label) as span:
-            cached_value = await cache_service.get(f"answer:{user_id}:{field_hash}")
-            span.set_attribute("cache.hit", cached_value is not None)
-    latency_breakdown["cache_ms"] = t.elapsed_ms
+    logger.info(f"[RESOLVE] START '{label}' (type={field_type})")
 
+    # ----- Step 1: Redis cache -----
+    cached_value = await cache_service.get(f"answer:{user_id}:{field_hash}")
     if cached_value is not None:
-        logger.info(
-            f"Cache hit for '{label}'",
-            extra={"source": "cache", "latency_ms": t.elapsed_ms, "phase": "resolved"},
-        )
-        return {
-            "value": cached_value,
-            "source": "cache",
-            "confidence": 1.0,
-            "canonical_key": None,
-        }
+        logger.info(f"[RESOLVE] STEP1 cache HIT '{label}' → '{cached_value}'")
+        return {"value": cached_value, "source": "cache", "confidence": 1.0, "canonical_key": None}
+    logger.info(f"[RESOLVE] STEP1 cache miss '{label}'")
 
-    # ----- Step 2: Map label to canonical key -----
-    with LatencyTimer("field_mapping", logger, field_label=label) as t:
-        canonical_key, mapping_confidence = map_to_canonical(label)
-    latency_breakdown["mapping_ms"] = t.elapsed_ms
+    # ----- Step 2: Map to canonical key -----
+    canonical_key, mapping_confidence = map_to_canonical(label)
+    logger.info(f"[RESOLVE] STEP2 canonical='{canonical_key}' confidence={mapping_confidence:.2f} for '{label}'")
 
-    # ----- Step 3: Structured Profile (1-5ms) -----
-    if canonical_key and canonical_key in PROFILE_DIRECT_FIELDS:
-        with LatencyTimer("profile_lookup", logger, canonical_key=canonical_key) as t:
-            _cached_profile = await _get_profile(db, user_id)
-        latency_breakdown["profile_ms"] = t.elapsed_ms
+    # ----- Step 3: Structured profile — only for high-confidence direct field matches -----
+    profile: Optional[dict] = None
+    if canonical_key and canonical_key in PROFILE_DIRECT_FIELDS and mapping_confidence >= 0.75:
+        logger.info(f"[RESOLVE] STEP3 profile lookup for canonical='{canonical_key}'")
+        try:
+            profile = await _get_profile(db, user_id)
+        except Exception as e:
+            logger.warning(f"[RESOLVE] STEP3 profile lookup FAILED: {e}")
+            await db.rollback()
 
-        if _cached_profile:
-            value = _cached_profile.get(canonical_key) if isinstance(_cached_profile, dict) else getattr(_cached_profile, canonical_key, None)
+        if profile:
+            value = profile.get(canonical_key) if isinstance(profile, dict) else getattr(profile, canonical_key, None)
+            logger.info(f"[RESOLVE] STEP3 profile value for '{canonical_key}' = {repr(value)}")
             if value is not None:
-                str_value = str(value)
+                str_value = _clean_profile_value(canonical_key, value)
                 await cache_service.cache_answer(str(user_id), field_hash, str_value)
-                logger.info(
-                    f"Profile hit for '{label}' → {canonical_key}",
-                    extra={"source": "profile", "latency_ms": sum(latency_breakdown.values()), "phase": "resolved"},
-                )
-                return {
-                    "value": str_value,
-                    "source": "profile",
-                    "confidence": mapping_confidence,
-                    "canonical_key": canonical_key,
-                }
+                logger.info(f"[RESOLVE] STEP3 RESOLVED '{label}' → '{str_value}' (profile)")
+                return {"value": str_value, "source": "profile", "confidence": mapping_confidence, "canonical_key": canonical_key}
+        else:
+            logger.info(f"[RESOLVE] STEP3 no profile found for user")
+    else:
+        logger.info(f"[RESOLVE] STEP3 skipped (canonical='{canonical_key}', in_direct={canonical_key in PROFILE_DIRECT_FIELDS if canonical_key else False}, conf={mapping_confidence:.2f})")
 
-    # ----- Step 4: Answer History (5-10ms) -----
-    with LatencyTimer("history_lookup", logger, field_label=label) as t:
+    # ----- Step 4: Answer history -----
+    logger.info(f"[RESOLVE] STEP4 history lookup for '{label}'")
+    try:
         historical = await _find_historical_answer(db, user_id, canonical_key, label)
-    latency_breakdown["history_ms"] = t.elapsed_ms
+    except Exception as e:
+        logger.warning(f"[RESOLVE] STEP4 history lookup FAILED: {e}")
+        await db.rollback()
+        historical = None
 
     if historical and historical["confidence"] >= 0.75:
         await cache_service.cache_answer(str(user_id), field_hash, historical["value"])
-        logger.info(
-            f"History hit for '{label}'",
-            extra={"source": "history", "latency_ms": sum(latency_breakdown.values()), "phase": "resolved"},
-        )
-        return {
-            "value": historical["value"],
-            "source": "history",
-            "confidence": historical["confidence"],
-            "canonical_key": canonical_key,
-        }
+        logger.info(f"[RESOLVE] STEP4 RESOLVED '{label}' → '{historical['value']}' (history conf={historical['confidence']:.2f})")
+        return {"value": historical["value"], "source": "history", "confidence": historical["confidence"], "canonical_key": canonical_key}
+    logger.info(f"[RESOLVE] STEP4 history miss (found={historical is not None})")
 
-    # ----- Step 5: RAG Cache Check (~0ms) -----
-    # Check if we've already answered this exact question via RAG before
-    if field_type in ("text", "textarea"):
-        with LatencyTimer("rag_cache_check", logger, field_label=label) as t:
-            with traced_span("rag_cache_check", field_label=label) as span:
-                rag_cached = await cache_service.get_cached_rag_result(str(user_id), field_hash)
-                span.set_attribute("rag_cache.hit", rag_cached is not None)
-        latency_breakdown["rag_cache_ms"] = t.elapsed_ms
+    # ----- Step 5: LLM inference — semantic catch-all -----
+    if profile is None:
+        logger.info(f"[RESOLVE] STEP5 fetching profile for LLM")
+        try:
+            profile = await _get_profile(db, user_id)
+        except Exception as e:
+            logger.warning(f"[RESOLVE] STEP5 profile fetch FAILED: {e}")
+            await db.rollback()
 
-        if rag_cached is not None:
-            # Also promote to answer cache for even faster next hit
-            await cache_service.cache_answer(str(user_id), field_hash, rag_cached)
-            logger.info(
-                f"RAG cache hit for '{label}'",
-                extra={"source": "rag_cache", "latency_ms": sum(latency_breakdown.values()), "phase": "resolved", "rag_cached": True},
-            )
-            return {
-                "value": rag_cached,
-                "source": "rag_cache",
-                "confidence": 0.75,
-                "canonical_key": canonical_key,
-            }
-
-    # ----- Step 6: Resume RAG fallback (50-200ms) -----
-    if field_type in ("text", "textarea"):
-        with LatencyTimer("rag_vector_query", logger, field_label=label) as t:
-            with traced_span("rag_vector_query", field_label=label) as span:
-                try:
-                    similar_chunks = await query_similar_chunks(
-                        db, user_id, label,
-                        top_k=settings.rag_max_top_k,
-                        similarity_threshold=settings.rag_similarity_threshold,
-                    )
-                    span.set_attribute("rag.chunks_returned", len(similar_chunks))
-                except Exception as e:
-                    logger.warning(f"RAG query failed for '{label}': {e}")
-                    similar_chunks = []
-                    span.set_attribute("rag.error", str(e))
-        latency_breakdown["rag_query_ms"] = t.elapsed_ms
-
-        if similar_chunks:
-            best = similar_chunks[0]
-            rag_value = best["chunk_text"][:settings.rag_max_chunk_chars]
-
-            # Cache this RAG output so next identical query is ~0ms
-            await cache_service.cache_rag_result(str(user_id), field_hash, rag_value)
-
-            logger.info(
-                f"RAG hit for '{label}' (similarity={best['similarity']:.2f})",
-                extra={
-                    "source": "resume_rag",
-                    "latency_ms": sum(latency_breakdown.values()),
-                    "phase": "resolved",
-                    "similarity": best["similarity"],
-                    "rag_cached": False,
-                },
-            )
-            return {
-                "value": rag_value,
-                "source": "resume_rag",
-                "confidence": best["similarity"] * 0.7,
-                "canonical_key": canonical_key,
-            }
-
-    # ----- Step 7: Rule-based defaults (fast, numeric patterns) -----
-    # Fetch profile lazily if not already loaded
-    if _cached_profile is None:
-        _cached_profile = await _get_profile(db, user_id)
-
-    default_value = _apply_default_rules(label, _cached_profile)
-    if default_value is not None:
-        await cache_service.cache_answer(str(user_id), field_hash, default_value)
-        logger.info(
-            f"Default rule hit for '{label}' → '{default_value}'",
-            extra={"source": "default_rule", "latency_ms": sum(latency_breakdown.values()), "phase": "resolved"},
-        )
-        return {
-            "value": default_value,
-            "source": "default_rule",
-            "confidence": 0.6,
-            "canonical_key": canonical_key,
-        }
-
-    # ----- Step 8: LLM inference (semantic catch-all for custom questions) -----
-    if field_type in ("text", "number", "select", "radio") and _cached_profile:
+    if profile:
+        logger.info(f"[RESOLVE] STEP5 calling LLM for '{label}' options={options}")
         with LatencyTimer("llm_inference", logger, field_label=label) as t:
-            with traced_span("llm_inference", field_label=label) as span:
-                llm_value = await _llm_infer_answer(
-                    label=label,
-                    field_type=field_type,
-                    options=options or [],
-                    profile=_cached_profile if isinstance(_cached_profile, dict) else {},
-                )
-                span.set_attribute("llm.resolved", llm_value is not None)
-        latency_breakdown["llm_ms"] = t.elapsed_ms
-
+            llm_value = await _llm_infer_answer(
+                label=label,
+                field_type=field_type,
+                options=options or [],
+                profile=profile if isinstance(profile, dict) else {},
+            )
+        logger.info(f"[RESOLVE] STEP5 LLM returned '{llm_value}' in {t.elapsed_ms:.0f}ms for '{label}'")
         if llm_value is not None:
             await cache_service.cache_answer(str(user_id), field_hash, llm_value)
-            logger.info(
-                f"LLM inference hit for '{label}' → '{llm_value}'",
-                extra={"source": "llm_infer", "latency_ms": sum(latency_breakdown.values()), "phase": "resolved"},
-            )
-            return {
-                "value": llm_value,
-                "source": "llm_infer",
-                "confidence": 0.7,
-                "canonical_key": canonical_key,
-            }
+            logger.info(f"[RESOLVE] STEP5 RESOLVED '{label}' → '{llm_value}' (llm)")
+            return {"value": llm_value, "source": "llm_infer", "confidence": 0.8, "canonical_key": canonical_key}
+    else:
+        logger.warning(f"[RESOLVE] STEP5 skipped — no profile available for LLM")
 
-    # ----- Step 9: Unknown -----
-    total_ms = sum(latency_breakdown.values())
-    logger.info(
-        f"Unresolved field: '{label}'",
-        extra={"source": "unknown", "latency_ms": total_ms, "phase": "unresolved"},
-    )
-    return {
-        "value": None,
-        "source": "unknown",
-        "confidence": 0.0,
-        "canonical_key": canonical_key,
-    }
+    # ----- Step 6: Unknown -----
+    total_ms = (time.perf_counter() - t_start) * 1000
+    logger.info(f"[RESOLVE] UNRESOLVED '{label}' after {total_ms:.0f}ms")
+    return {"value": None, "source": "unknown", "confidence": 0.0, "canonical_key": canonical_key}
 
 
 async def resolve_fields_batch(

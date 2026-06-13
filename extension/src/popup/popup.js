@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const profileFields = {
     years_of_experience: document.getElementById('profileYoe'),
     current_title: document.getElementById('profileTitle'),
+    current_salary: document.getElementById('profileCurrentSalary'),
     expected_salary: document.getElementById('profileSalary'),
     notice_period: document.getElementById('profileNotice'),
     location: document.getElementById('profileLocation'),
@@ -34,15 +35,42 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Logout
   const logoutBtn = document.getElementById('logoutBtn');
+  const enableToggle = document.getElementById('enableToggle');
 
   // ------------------------------------------------------------------
-  // Init: Check auth status
+  // Init: Load toggle state + auth status
   // ------------------------------------------------------------------
+  const { neuroapplyEnabled } = await chrome.storage.local.get('neuroapplyEnabled');
+  enableToggle.checked = neuroapplyEnabled !== false; // default ON only if explicitly set
+
+  enableToggle.addEventListener('change', async () => {
+    await chrome.storage.local.set({ neuroapplyEnabled: enableToggle.checked });
+    console.log('[NeuroApply] Autofill', enableToggle.checked ? 'enabled' : 'disabled');
+  });
+
   const authStatus = await sendMessage('GET_AUTH_STATUS');
   if (authStatus?.authenticated) {
-    showMainView();
-    loadProfile();
-    updateStatus('connected');
+    // Validate token is actually still good with a real API call
+    const token = (await chrome.storage.local.get('authToken')).authToken;
+    try {
+      const check = await fetch('http://localhost:8000/api/v1/profile', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (check.ok) {
+        showMainView();
+        const profile = await check.json();
+        populateProfile(profile);
+        updateStatus('connected');
+      } else {
+        // Token expired — force re-login
+        await sendMessage('LOGOUT');
+        showAuthView();
+        updateStatus('disconnected');
+      }
+    } catch {
+      showAuthView();
+      updateStatus('disconnected');
+    }
   } else {
     showAuthView();
     updateStatus('disconnected');
@@ -251,25 +279,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       status === 'connected' ? 'Connected' : 'Disconnected';
   }
 
+  function populateProfile(profile) {
+    for (const [key, input] of Object.entries(profileFields)) {
+      if (profile[key] != null) input.value = profile[key];
+    }
+    // Show resume status if available
+    if (profile.resume_count > 0 || profile.has_resume) {
+      resumeStatus.innerHTML = '<p class="uploaded">✓ Resume on file</p>';
+    }
+  }
+
   async function loadProfile() {
     const token = (await chrome.storage.local.get('authToken')).authToken;
     if (!token) return;
-
     try {
       const response = await fetch('http://localhost:8000/api/v1/profile', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
-      if (response.ok) {
-        const profile = await response.json();
-        // Populate fields
-        for (const [key, input] of Object.entries(profileFields)) {
-          if (profile[key] != null) {
-            input.value = profile[key];
-          }
-        }
-      }
-    } catch {
-      // Silently fail — profile will be empty
-    }
+      if (response.ok) populateProfile(await response.json());
+    } catch { /* silent */ }
   }
 });

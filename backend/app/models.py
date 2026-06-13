@@ -43,6 +43,7 @@ class UserProfile(SQLModel, table=True):
     years_of_experience: Optional[int] = Field(default=None)
     current_title: Optional[str] = Field(default=None, max_length=255)
     current_company: Optional[str] = Field(default=None, max_length=255)
+    current_salary: Optional[str] = Field(default=None, max_length=100)
     expected_salary: Optional[str] = Field(default=None, max_length=100)
     notice_period: Optional[str] = Field(default=None, max_length=100)
     location: Optional[str] = Field(default=None, max_length=255)

@@ -195,7 +195,8 @@ def map_to_canonical(label: str, threshold: int = 80) -> Tuple[Optional[str], fl
         Tuple of (canonical_key, confidence_score).
         Returns (None, 0.0) if no match found above threshold.
     """
-    normalized = label.lower().strip()
+    import re
+    normalized = re.sub(r'[\s*?:]+$', '', label.lower().strip())
 
     # Fast path: exact match
     if normalized in _LABEL_TO_KEY:

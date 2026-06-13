@@ -47,6 +47,7 @@
     isProcessing = true;
 
     try {
+      modal.dataset.neuroapplyModal = 'true';
       console.log('[NeuroApply] 🔍 Easy Apply modal detected, extracting fields...');
 
       // Extract fields
@@ -148,51 +149,59 @@
       input.dataset.neuroapplyListening = 'true';
 
       input.addEventListener('change', () => {
-        if (input.classList.contains('neuroapply-filled')) {
-          const label = window.FieldExtractor.findLabel(input);
-          if (label) {
-            // Send correction to background
-            chrome.runtime.sendMessage({
-              type: 'SUBMIT_FEEDBACK',
-              payload: {
-                field_label: label,
-                corrected_value: input.value,
-                platform: 'linkedin',
-              },
-            });
-            console.log(`[NeuroApply] 📤 Correction submitted for "${label}"`);
-          }
-        }
+        const value = input.value?.trim();
+        if (!value) return;
+
+        // Only save inputs that are inside the confirmed Easy Apply modal
+        if (!input.closest('[data-neuroapply-modal]')) return;
+
+        const label = window.FieldExtractor.findLabel(input);
+        if (!label) return;
+
+        chrome.runtime.sendMessage({
+          type: 'SUBMIT_FEEDBACK',
+          payload: {
+            field_label: label,
+            corrected_value: value,
+            platform: 'linkedin',
+          },
+        });
+        console.log(`[NeuroApply] 💾 Saved answer for "${label}" → "${value}"`);
       });
     });
   }
 
   /**
-   * MutationObserver — watch for Easy Apply modal changes
+   * Check if autofill is enabled via the popup toggle.
    */
-  const observer = new MutationObserver((mutations) => {
-    // Debounce: only process once per batch of mutations
+  async function isEnabled() {
+    const { neuroapplyEnabled } = await chrome.storage.local.get('neuroapplyEnabled');
+    return neuroapplyEnabled !== false; // ON by default unless explicitly turned off
+  }
+
+  /**
+   * MutationObserver — watch for Easy Apply modal changes.
+   * Only fires when the toggle is ON.
+   */
+  const observer = new MutationObserver(async () => {
+    if (!(await isEnabled())) return;
+
     const modal = findEasyApplyModal();
     if (modal) {
-      // Small delay to let LinkedIn finish rendering the form
       setTimeout(() => {
         processModal(modal);
         attachCorrectionListeners(modal);
       }, 500);
     } else {
-      // Modal closed — reset
       lastProcessedFields = null;
     }
   });
 
-  // Start observing
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
+  observer.observe(document.body, { childList: true, subtree: true });
 
-  // Also check immediately on page load
-  setTimeout(() => {
+  // Check on page load too
+  setTimeout(async () => {
+    if (!(await isEnabled())) return;
     const modal = findEasyApplyModal();
     if (modal) {
       processModal(modal);
