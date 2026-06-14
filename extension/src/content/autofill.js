@@ -40,27 +40,51 @@ const Autofill = (() => {
    * Select a dropdown option
    */
   function fillSelect(select, value) {
+    const strVal = String(value).toLowerCase().trim();
+
     // Try exact value match first
     let option = Array.from(select.options).find(o => o.value === value);
-    
+
     // Fallback: case-insensitive text match
     if (!option) {
       option = Array.from(select.options).find(
-        o => o.textContent.trim().toLowerCase() === value.toLowerCase()
+        o => o.textContent.trim().toLowerCase() === strVal
+      );
+    }
+
+    // Fallback: boolean/truthy normalisation ("yes","true","1" → first positive option)
+    if (!option && (strVal === 'yes' || strVal === 'true' || strVal === '1')) {
+      option = Array.from(select.options).find(
+        o => /^yes$/i.test(o.textContent.trim())
+      );
+    }
+    if (!option && (strVal === 'no' || strVal === 'false' || strVal === '0')) {
+      option = Array.from(select.options).find(
+        o => /^no$/i.test(o.textContent.trim())
       );
     }
 
     // Fallback: partial match
     if (!option) {
       option = Array.from(select.options).find(
-        o => o.textContent.trim().toLowerCase().includes(value.toLowerCase()) ||
-             value.toLowerCase().includes(o.textContent.trim().toLowerCase())
+        o => o.textContent.trim().toLowerCase().includes(strVal) ||
+             strVal.includes(o.textContent.trim().toLowerCase())
       );
     }
 
     if (option) {
-      select.value = option.value;
+      const nativeSelectSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLSelectElement.prototype, 'value'
+      )?.set;
+      if (nativeSelectSetter) {
+        nativeSelectSetter.call(select, option.value);
+      } else {
+        select.value = option.value;
+      }
+      // React needs both input + change
+      select.dispatchEvent(new Event('input',  { bubbles: true }));
       select.dispatchEvent(new Event('change', { bubbles: true }));
+      select.dispatchEvent(new Event('blur',   { bubbles: true }));
       return true;
     }
     return false;
@@ -115,11 +139,18 @@ const Autofill = (() => {
 
       switch (field.type) {
         case 'text':
-        case 'number':
         case 'textarea':
           fillTextInput(input, value);
           markFilled(input);
           return true;
+
+        case 'number': {
+          // Strip anything that isn't digits or a decimal point
+          const numStr = String(value).replace(/[^\d.]/g, '').replace(/^\./, '0.').trim();
+          fillTextInput(input, numStr || String(value));
+          markFilled(input);
+          return true;
+        }
 
         case 'select':
           const filled = fillSelect(input, value);

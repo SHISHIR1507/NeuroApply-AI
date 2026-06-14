@@ -186,3 +186,17 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     updated_fields: Dict[str, Any] = {}
+
+
+class FieldAnswerRequest(BaseModel):
+    field_key: str
+    raw_answer: str
+
+
+class FieldAnswerResponse(BaseModel):
+    field_key: str
+    normalized_value: Optional[Any] = None
+    display_value: str = ""
+    saved: bool = False
+    clarification_needed: bool = False
+    clarification_message: str = ""

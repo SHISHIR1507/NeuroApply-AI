@@ -66,6 +66,9 @@
 
       console.log(`[NeuroApply] Found ${fields.length} fields:`, fields.map(f => f.label));
 
+      // Bail out if the extension was reloaded while we were processing
+      if (!isContextValid()) return;
+
       // Send to service worker for resolution
       const response = await chrome.runtime.sendMessage({
         type: 'RESOLVE_FIELDS',
@@ -149,6 +152,7 @@
       input.dataset.neuroapplyListening = 'true';
 
       input.addEventListener('change', () => {
+        if (!isContextValid()) return;
         const value = input.value?.trim();
         if (!value) return;
 
@@ -158,32 +162,81 @@
         const label = window.FieldExtractor.findLabel(input);
         if (!label) return;
 
-        chrome.runtime.sendMessage({
-          type: 'SUBMIT_FEEDBACK',
-          payload: {
-            field_label: label,
-            corrected_value: value,
-            platform: 'linkedin',
-          },
-        });
+        try {
+          chrome.runtime.sendMessage({
+            type: 'SUBMIT_FEEDBACK',
+            payload: {
+              field_label: label,
+              corrected_value: value,
+              platform: 'linkedin',
+            },
+          });
+        } catch { /* context invalidated, ignore */ }
         console.log(`[NeuroApply] 💾 Saved answer for "${label}" → "${value}"`);
       });
     });
   }
 
   /**
-   * Check if autofill is enabled via the popup toggle.
+   * Detect if the extension context is still valid.
+   * Returns false (and tears down the observer) when the extension is reloaded.
    */
-  async function isEnabled() {
-    const { neuroapplyEnabled } = await chrome.storage.local.get('neuroapplyEnabled');
-    return neuroapplyEnabled !== false; // ON by default unless explicitly turned off
+  function isContextValid() {
+    try {
+      // Accessing chrome.runtime.id throws if the context is invalidated
+      return !!chrome.runtime?.id;
+    } catch {
+      return false;
+    }
   }
 
   /**
+   * Check if autofill is enabled via the popup toggle.
+   * Returns false when the extension context has been invalidated.
+   */
+  async function isEnabled() {
+    if (!isContextValid()) return false;
+    try {
+      const { neuroapplyEnabled } = await chrome.storage.local.get('neuroapplyEnabled');
+      return neuroapplyEnabled !== false; // ON by default unless explicitly turned off
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Listen for LinkedIn's Next / Review / Continue button clicks.
+   * Clears the processing gate so the next modal page is always processed.
+   */
+  document.addEventListener('click', async (e) => {
+    if (!isContextValid()) return;
+    const btn = e.target.closest('button, [role="button"]');
+    if (!btn) return;
+    const text = (btn.textContent || btn.getAttribute('aria-label') || '').trim().toLowerCase();
+    const isNavBtn = text === 'next' || text === 'continue' || text === 'review'
+                  || text === 'next step' || text === 'review your application';
+    if (!isNavBtn) return;
+
+    // Reset gate so the new page can be processed
+    isProcessing = false;
+    lastProcessedFields = null;
+
+    setTimeout(async () => {
+      if (!(await isEnabled())) return;
+      const modal = findEasyApplyModal();
+      if (modal) {
+        processModal(modal);
+        attachCorrectionListeners(modal);
+      }
+    }, 900);
+  }, true);
+
+  /**
    * MutationObserver — watch for Easy Apply modal changes.
-   * Only fires when the toggle is ON.
+   * Disconnects itself when the extension context is invalidated.
    */
   const observer = new MutationObserver(async () => {
+    if (!isContextValid()) { observer.disconnect(); return; }
     if (!(await isEnabled())) return;
 
     const modal = findEasyApplyModal();
@@ -201,6 +254,7 @@
 
   // Check on page load too
   setTimeout(async () => {
+    if (!isContextValid()) return;
     if (!(await isEnabled())) return;
     const modal = findEasyApplyModal();
     if (modal) {

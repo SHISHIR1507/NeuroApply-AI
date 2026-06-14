@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroApply AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="profile.css">
+</head>
+<body>
+
+  <div class="bg-bloom"></div>
+
+  <!-- Floating top controls -->
+  <header class="topbar">
+    <button class="menu-btn" aria-label="Menu">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+      </svg>
+    </button>
+    <div class="topbar-right">
+      <div id="connPill" class="conn-pill conn-on">
+        <span class="conn-dot"></span>
+        <span id="connLabel">Connected</span>
+      </div>
+      <button id="signOutBtn" class="sign-btn">Sign out</button>
+    </div>
+  </header>
+
+  <!-- Onboarding progress (thin line below topbar) -->
+  <div id="progressWrap" class="progress-wrap hidden">
+    <div id="progressFill" class="progress-fill"></div>
+  </div>
+
+  <!-- Hero — visible until first message -->
+  <div class="hero" id="hero">
+    <div class="hero-icon">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none">
+        <defs>
+          <linearGradient id="hg" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#a5b4fc"/>
+            <stop offset="1" stop-color="#c084fc"/>
+          </linearGradient>
+        </defs>
+        <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" fill="url(#hg)"/>
+      </svg>
+    </div>
+    <h1 class="hero-h1">Good to See You!<br>How Can I be an Assistance?</h1>
+    <p class="hero-sub">I'm available 24/7 for you, ask me anything.</p>
+  </div>
+
+  <!-- Chat messages -->
+  <main id="chatArea" class="chat-area"></main>
+
+  <!-- Bottom input (always visible) -->
+  <div class="input-wrap">
+    <div class="pro-row">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="#fbbf24" style="flex-shrink:0">
+        <path d="M13 2L4.5 13.5H11L10 22L20.5 10H14L13 2Z"/>
+      </svg>
+      <span>Unlock more features with the Pro plan.</span>
+      <span class="pr-gap"></span>
+      <span>Active extensions</span>
+      <span class="s-dot" id="statusDot"></span>
+    </div>
+
+    <div class="ishell" id="inputShell">
+      <button class="i-plus" tabindex="-1">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+      <span class="vdiv"></span>
+      <textarea id="msgInput" class="ifield" placeholder="Ask anything…" rows="1"></textarea>
+      <div class="i-right">
+        <button class="i-wave" tabindex="-1">
+          <svg width="15" height="15" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 16 Q5 8 8 16 Q11 24 14 16 Q17 8 20 16 Q23 24 26 16 Q29 8 30 16"/>
+          </svg>
+        </button>
+        <span class="vdiv"></span>
+        <button id="sendBtn" class="i-send" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"/>
+            <polyline points="5 12 12 5 19 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="chips">
+      <button class="chip">Any advice for me?</button>
+      <button class="chip">Some youtube video idea</button>
+      <button class="chip">Life lessons from kratos</button>
+    </div>
+  </div>
+
+  <script src="profile.js"></script>
+</body>
+</html>

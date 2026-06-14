@@ -302,6 +302,20 @@ async def resolve_single_field(
         return {"value": historical["value"], "source": "history", "confidence": historical["confidence"], "canonical_key": canonical_key}
     logger.info(f"[RESOLVE] STEP4 history miss (found={historical is not None})")
 
+    # ----- Step 4.5: Fast default rules (pattern matching, no LLM) -----
+    if profile is None:
+        try:
+            profile = await _get_profile(db, user_id)
+        except Exception as e:
+            logger.warning(f"[RESOLVE] STEP4.5 profile fetch FAILED: {e}")
+            await db.rollback()
+
+    default_value = _apply_default_rules(label, profile)
+    if default_value is not None:
+        await cache_service.cache_answer(str(user_id), field_hash, default_value)
+        logger.info(f"[RESOLVE] STEP4.5 RESOLVED '{label}' → '{default_value}' (default_rule)")
+        return {"value": default_value, "source": "default_rule", "confidence": 0.85, "canonical_key": canonical_key}
+
     # ----- Step 5: LLM inference — semantic catch-all -----
     if profile is None:
         logger.info(f"[RESOLVE] STEP5 fetching profile for LLM")

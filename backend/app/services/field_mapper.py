@@ -39,6 +39,12 @@ CANONICAL_FIELDS: dict[str, list[str]] = {
         "total years of experience", "experience in years",
         "how many years of relevant experience do you have",
         "years of relevant experience",
+        "how many years of work experience do you have",
+        "years of work experience", "how many years have you worked",
+        "how many years of work experience do you have with",
+        "years of experience with", "experience with",
+        "how many years of experience do you have with",
+        "how many years of experience in",
     ],
     "current_title": [
         "current title", "job title", "current role", "current position",
