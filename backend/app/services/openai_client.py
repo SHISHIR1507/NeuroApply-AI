@@ -31,13 +31,20 @@ class OpenAIClient:
         user_prompt: str,
         temperature: float = 0.1,
         max_tokens: int = 4096,
+        messages: Optional[list] = None,
     ) -> str:
+        """
+        Call chat completions. Optionally pass prior `messages` for multi-turn context.
+        The system_prompt is always prepended; user_prompt is appended as the final user turn.
+        """
+        all_messages = [{"role": "system", "content": system_prompt}]
+        if messages:
+            all_messages.extend(messages)
+        all_messages.append({"role": "user", "content": user_prompt})
+
         response = await self.client.chat.completions.create(
             model=settings.openai_llm_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
+            messages=all_messages,
             temperature=temperature,
             max_tokens=max_tokens,
         )

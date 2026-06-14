@@ -66,63 +66,38 @@
 
     <!-- Main Section (shown when logged in) -->
     <section id="mainSection" class="section hidden">
-      <!-- Quick Profile -->
-      <div class="card">
-        <h3>Quick Profile</h3>
-        <div class="profile-fields">
-          <div class="form-group compact">
-            <label>Experience</label>
-            <input type="number" id="profileYoe" placeholder="Years" min="0" max="50">
-          </div>
-          <div class="form-group compact">
-            <label>Current Title</label>
-            <input type="text" id="profileTitle" placeholder="Software Engineer">
-          </div>
-          <div class="form-group compact">
-            <label>Current Salary</label>
-            <input type="text" id="profileCurrentSalary" placeholder="4 LPA">
-          </div>
-          <div class="form-group compact">
-            <label>Expected Salary</label>
-            <input type="text" id="profileSalary" placeholder="6 LPA">
-          </div>
-          <div class="form-group compact">
-            <label>Notice Period</label>
-            <input type="text" id="profileNotice" placeholder="2 weeks">
-          </div>
-          <div class="form-group compact">
-            <label>Location</label>
-            <input type="text" id="profileLocation" placeholder="San Francisco, CA">
-          </div>
-        </div>
-        <button id="saveProfileBtn" class="btn btn-secondary">Save Profile</button>
-      </div>
 
-      <!-- Resume Upload -->
-      <div class="card">
-        <h3>Resume</h3>
-        <div id="resumeStatus" class="resume-status">
-          <p class="muted">No resume uploaded yet</p>
-        </div>
-        <label for="resumeUpload" class="btn btn-secondary upload-btn">
-          📄 Upload Resume
-        </label>
-        <input type="file" id="resumeUpload" accept=".pdf,.docx,.doc,.txt" class="hidden">
-      </div>
-
-      <!-- Stats -->
-      <div class="card stats-card">
-        <div class="stat">
-          <span class="stat-value" id="statFieldsResolved">0</span>
-          <span class="stat-label">Fields Resolved</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value" id="statCacheHits">0</span>
-          <span class="stat-label">Cache Hits</span>
+      <!-- Chat -->
+      <div class="chat-wrapper">
+        <div id="chatMessages" class="chat-messages"></div>
+        <div class="chat-input-row">
+          <textarea
+            id="chatInput"
+            placeholder="Tell me about yourself…"
+            rows="2"
+          ></textarea>
+          <button id="chatSendBtn" class="chat-send-btn" title="Send">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+            </svg>
+          </button>
         </div>
       </div>
 
-      <!-- Logout -->
+      <!-- Resume Card -->
+      <div class="card resume-card">
+        <div class="resume-card-row">
+          <div class="resume-card-info">
+            <h3>Resume</h3>
+            <div id="resumeStatus" class="resume-status">
+              <p class="muted">No resume uploaded</p>
+            </div>
+          </div>
+          <label for="resumeUpload" class="btn btn-secondary upload-btn-sm">Upload</label>
+          <input type="file" id="resumeUpload" accept=".pdf,.docx,.doc,.txt" class="hidden">
+        </div>
+      </div>
+
       <button id="logoutBtn" class="btn btn-ghost">Sign Out</button>
     </section>
   </div>

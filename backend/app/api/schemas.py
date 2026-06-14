@@ -167,3 +167,22 @@ class ResumeUploadResponse(BaseModel):
     resume_id: Optional[str] = None
     fields_extracted: Optional[int] = None
     chunks_embedded: Optional[int] = None
+
+
+# ==================================================================
+# Chat Schemas
+# ==================================================================
+
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: Optional[List[ChatMessage]] = None
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    updated_fields: Dict[str, Any] = {}

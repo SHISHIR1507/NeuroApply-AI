@@ -16,7 +16,7 @@ from app.core.logging import setup_logging, get_logger, request_id_ctx, user_id_
 from app.core.tracing import setup_tracing
 
 # Import route modules
-from app.api.routes import auth, profile, resolve, resume, feedback
+from app.api.routes import auth, profile, resolve, resume, feedback, chat
 
 logger = get_logger("app")
 
@@ -127,6 +127,7 @@ app.include_router(profile.router, prefix=API_V1_PREFIX)
 app.include_router(resolve.router, prefix=API_V1_PREFIX)
 app.include_router(resume.router, prefix=API_V1_PREFIX)
 app.include_router(feedback.router, prefix=API_V1_PREFIX)
+app.include_router(chat.router, prefix=API_V1_PREFIX)
 
 
 # ------------------------------------------------------------------
