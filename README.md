@@ -1,144 +1,222 @@
+<div align="center">
+
 # NeuroApply AI
 
-> AI-powered Chrome extension that automatically fills LinkedIn Easy Apply forms using your profile, resume, and learned answers.
+**Intelligent job application automation — from profile to submitted form in seconds.**
 
-![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi&logoColor=white)
-![OpenAI](https://img.shields.io/badge/OpenAI-gpt--4o--mini-412991?logo=openai&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17+pgvector-4169E1?logo=postgresql&logoColor=white)
+[![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17%20+%20pgvector-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![Redis](https://img.shields.io/badge/Redis-Cache-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
----
+[Overview](#overview) · [Architecture](#architecture) · [Quick Start](#quick-start) · [API Reference](#api-reference) · [Contributing](#contributing)
 
-## How It Works
-
-1. You open a LinkedIn Easy Apply form
-2. The extension detects the modal and extracts all form fields
-3. Fields are sent to the FastAPI backend for resolution
-4. Answers are filled in automatically — name, email, salary, experience, proficiency, yes/no questions, dropdowns
-5. Your manual corrections are saved and used in future applications
+</div>
 
 ---
 
-## Resolution Chain
+## Overview
 
-Every field goes through these steps until an answer is found:
+NeuroApply AI is a full-stack job application assistant that eliminates the repetitive work of filling out job application forms. A Chrome extension detects LinkedIn Easy Apply modals, extracts form fields, and resolves answers through a multi-layer intelligence pipeline — pulling from your structured profile, learned answer history, and LLM inference when needed.
 
-| Step | Source | Latency |
-|------|--------|---------|
-| 1 | **Redis cache** — previously resolved answer | < 1ms |
-| 2 | **Structured profile** — direct DB column (name, email, salary, etc.) | 1–5ms |
-| 3 | **Answer history** — questions you've answered before | 5–10ms |
-| 4 | **LLM inference** — GPT-4o-mini reads your full profile and answers any question semantically | 200–500ms (cached after first hit) |
-| 5 | **Unknown** — left blank for manual input |  |
+**What it does:**
 
-Salary values are auto-converted from "6 LPA" → `600000`. Proficiency/rating questions default to 8–10. All LLM answers are cached in Redis so repeat questions are instant.
+- Detects LinkedIn Easy Apply modals automatically
+- Fills text fields, dropdowns, radio buttons, and checkboxes
+- Converts salary formats intelligently (e.g. `6 LPA` → `600000`)
+- Learns from your manual corrections and reuses them in future applications
+- Resolves most fields from cache in under 1ms on repeat visits
+
+---
+
+## Architecture
+
+NeuroApply AI is composed of three independent layers that communicate over a REST API:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Chrome Extension (Manifest V3)                                 │
+│  ┌─────────────┐  ┌──────────────┐  ┌───────────────────────┐  │
+│  │ Content     │  │ Field        │  │ Autofill Engine       │  │
+│  │ Script      │→ │ Extractor    │→ │ (React-compatible)    │  │
+│  └─────────────┘  └──────────────┘  └───────────────────────┘  │
+│         │                                                        │
+│  ┌──────▼──────┐                                                 │
+│  │ Service     │  (local answer cache + API client)              │
+│  │ Worker      │                                                 │
+└──┴──────┬──────┴─────────────────────────────────────────────── ┘
+          │ HTTP (JWT)
+┌─────────▼───────────────────────────────────────────────────────┐
+│  FastAPI Backend                                                  │
+│                                                                   │
+│  POST /api/v1/resolve                                             │
+│                                                                   │
+│  ┌──────────┐  ┌──────────┐  ┌─────────────┐  ┌─────────────┐  │
+│  │  Redis   │→ │ Profile  │→ │   Answer    │→ │ LLM Infer   │  │
+│  │  Cache   │  │   DB     │  │   History   │  │ (gpt-4o-m.) │  │
+│  └──────────┘  └──────────┘  └─────────────┘  └─────────────┘  │
+│                                                                   │
+│  PostgreSQL + pgvector · Redis · OpenAI                          │
+└───────────────────────────────────────────────────────────────── ┘
+          │
+┌─────────▼───────────────────────────────────────────────────────┐
+│  Next.js Dashboard (localhost:3000)                               │
+│  Profile editor · Resume upload · Application history            │
+└───────────────────────────────────────────────────────────────── ┘
+```
+
+### Field Resolution Pipeline
+
+Every form field runs through this chain until an answer is found:
+
+| Priority | Source | Latency | Description |
+|----------|--------|---------|-------------|
+| 1 | **Redis Cache** | < 1ms | Previously resolved answer, keyed by user + field hash |
+| 2 | **Structured Profile** | 1–5ms | Direct column lookup — name, email, salary, LinkedIn URL, etc. |
+| 3 | **Answer History** | 5–10ms | Fuzzy-matched question from past applications |
+| 4 | **LLM Inference** | 200–500ms¹ | Full profile sent to GPT-4o-mini for semantic resolution |
+| 5 | **Unknown** | — | Left blank; highlighted for manual entry |
+
+> ¹ First occurrence only. LLM answers are cached in Redis and resolve in < 1ms on repeat.
 
 ---
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|-----------|
+| Layer | Technology |
+|-------|-----------|
+| Chrome Extension | Manifest V3, Vanilla JS |
 | Backend | Python 3.13, FastAPI, async SQLAlchemy |
-| Database | PostgreSQL 17 + pgvector |
-| Cache | Redis |
-| LLM | OpenAI gpt-4o-mini |
+| Database | PostgreSQL 17 + pgvector extension |
+| Cache | Redis (answer cache + profile cache + RAG cache) |
+| LLM | OpenAI GPT-4o-mini |
 | Embeddings | OpenAI text-embedding-3-small (1536-dim) |
-| Extension | Chrome Manifest V3 |
 | Frontend | Next.js 14, TypeScript, Tailwind CSS |
-| Auth | JWT (email/password) |
+| Auth | JWT (access + refresh tokens, bcrypt passwords) |
+| Observability | Structured JSON logging, OpenTelemetry tracing |
 
 ---
 
-## Local Setup (No Docker)
+## Quick Start
 
 ### Prerequisites
-- Python 3.11+
-- PostgreSQL 17 with pgvector
-- Redis
-- Node.js 18+
-- OpenAI API key
 
-### 1. Clone and configure
+| Requirement | Version |
+|-------------|---------|
+| Python | 3.11+ |
+| Node.js | 18+ |
+| PostgreSQL | 17+ with [pgvector](https://github.com/pgvector/pgvector) |
+| Redis | 7+ |
+| OpenAI API Key | — |
+
+---
+
+### 1. Clone & configure
 
 ```bash
 git clone https://github.com/SHISHIR1507/NeuroApply-AI.git
 cd NeuroApply-AI/backend
 cp .env.example .env
-# Edit .env — set OPENAI_API_KEY and DATABASE_URL
 ```
+
+Open `.env` and set at minimum:
+
+```env
+OPENAI_API_KEY=sk-...
+JWT_SECRET_KEY=your-random-secret   # generate with: openssl rand -hex 32
+```
+
+---
 
 ### 2. Start PostgreSQL and Redis
 
+**macOS (Homebrew):**
+
 ```bash
-# macOS (Homebrew)
 brew services start postgresql@17
 brew services start redis
 
-# Create DB
+# One-time database setup
 psql postgres -c "CREATE USER neuroapply WITH PASSWORD 'neuroapply_dev';"
 psql postgres -c "CREATE DATABASE neuroapply OWNER neuroapply;"
 psql neuroapply -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
+**Docker (alternative):**
+
+```bash
+docker compose up -d   # starts PostgreSQL + Redis
+```
+
+---
+
 ### 3. Run the backend
 
 ```bash
-python -m venv venv
-source venv/bin/activate
+cd backend
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 4. Run the frontend (optional)
-
-```bash
-cd ../frontend
-npm install
-npm run dev
-# Opens at http://localhost:3000
-```
-
-### 5. Load the Chrome extension
-
-1. Open `chrome://extensions/`
-2. Enable **Developer mode**
-3. Click **Load unpacked** → select the `extension/` folder
-4. Pin the extension and log in via the popup
-
-### 6. Verify
+Verify:
 
 ```bash
 curl http://localhost:8000/health
-# → {"status": "healthy", "service": "NeuroApply AI", "version": "0.1.0"}
+# {"status": "healthy", "service": "NeuroApply AI", "version": "0.1.0"}
+```
+
+Interactive API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+### 4. Run the dashboard (optional)
+
+```bash
+cd frontend
+npm install
+npm run dev
+# Dashboard available at http://localhost:3000
 ```
 
 ---
 
-## Chrome Extension Usage
+### 5. Load the Chrome extension
 
-- Click the **NeuroApply AI** icon in Chrome to open the popup
-- **Toggle** (top-right of popup) — flip ON before applying, OFF when browsing normally
-- Log in with the same credentials you registered on the frontend/backend
-- Upload your resume in the popup or at `localhost:3000/dashboard/resume`
-- Open any LinkedIn job → click **Easy Apply** → fields fill automatically
-- Manually correct any field — your answer is saved and reused next time
+1. Navigate to `chrome://extensions/`
+2. Enable **Developer mode** (top-right toggle)
+3. Click **Load unpacked** → select the `extension/` folder
+4. Copy your extension ID from the extensions page
+5. Add it to `backend/.env`:
+
+```env
+CORS_ORIGINS=["chrome-extension://YOUR_EXTENSION_ID","http://localhost:3000"]
+```
+
+6. Restart the backend
 
 ---
 
-## API Endpoints
+### 6. Set up your profile
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/v1/auth/register` | Create account |
-| `POST` | `/api/v1/auth/login` | Login (returns JWT) |
-| `GET` | `/api/v1/profile` | Get profile |
-| `PUT` | `/api/v1/profile` | Update profile |
-| `POST` | `/api/v1/resolve` | Batch resolve form fields |
-| `POST` | `/api/v1/resume/upload` | Upload + parse resume |
-| `GET` | `/api/v1/resume/status` | Resume processing status |
-| `POST` | `/api/v1/feedback` | Save a corrected answer |
-| `GET` | `/health` | Health check |
+1. Register at [http://localhost:3000/register](http://localhost:3000/register)
+2. Complete your profile at `/dashboard/profile` — the more fields you fill, the fewer LLM calls are needed
+3. Upload your resume at `/dashboard/resume`
+4. Click the NeuroApply AI icon in Chrome, log in, and enable the toggle
+
+---
+
+## Usage
+
+1. Open any LinkedIn job posting and click **Easy Apply**
+2. NeuroApply AI detects the modal and fills all resolvable fields automatically
+3. A notification appears showing how many fields were filled
+4. Review and correct any field — your correction is saved immediately and used in all future applications
+5. Click **Next** to advance to the next page — fields are filled automatically on every step
+
+> **Important:** If you reload the extension, refresh the LinkedIn tab before using Easy Apply to avoid context invalidation errors.
 
 ---
 
@@ -146,69 +224,131 @@ curl http://localhost:8000/health
 
 ```
 NeuroApply-AI/
-├── extension/                    # Chrome Extension (Manifest V3)
+│
+├── extension/                        Chrome Extension (Manifest V3)
 │   ├── manifest.json
 │   └── src/
 │       ├── content/
-│       │   ├── content.js        # MutationObserver, modal detection, orchestrator
-│       │   ├── fieldExtractor.js # Label extraction from DOM
-│       │   ├── autofill.js       # React-compatible form filling
-│       │   └── content.css
+│       │   ├── content.js            Orchestrator — modal detection, MutationObserver
+│       │   ├── fieldExtractor.js     DOM label extraction (aria, for/id, parent traversal)
+│       │   ├── autofill.js           React-compatible form filling engine
+│       │   └── content.css           Field highlight styles
 │       ├── background/
-│       │   └── background.js     # Service worker, API client, local cache
+│       │   └── background.js         Service worker — API client, local answer cache
 │       └── popup/
-│           ├── popup.html        # Quick profile, resume upload, toggle
+│           ├── popup.html            Quick login, toggle, resume upload shortcut
 │           ├── popup.js
 │           └── popup.css
 │
-├── backend/                      # FastAPI Backend
-│   ├── app/
-│   │   ├── main.py               # App entry point + lifespan
-│   │   ├── config.py             # Environment settings
-│   │   ├── models.py             # SQLModel DB tables
-│   │   ├── api/
-│   │   │   ├── schemas.py        # Pydantic request/response models
-│   │   │   ├── deps.py           # Auth dependency injection
-│   │   │   └── routes/           # auth, profile, resolve, resume, feedback
-│   │   ├── services/
-│   │   │   ├── resolver.py       # 5-step field resolution engine
-│   │   │   ├── field_mapper.py   # Fuzzy label → canonical key mapping
-│   │   │   ├── openai_client.py  # OpenAI async wrapper
-│   │   │   ├── cache.py          # Redis operations
-│   │   │   ├── resume_parser.py  # Resume text extraction + OpenAI parsing
-│   │   │   └── vector_store.py   # pgvector similarity search
-│   │   └── core/
-│   │       ├── security.py       # JWT + bcrypt
-│   │       ├── logging.py        # Structured JSON logging
-│   │       └── tracing.py        # OpenTelemetry spans
-│   ├── .env.example
-│   └── requirements.txt
-│
-├── frontend/                     # Next.js 14 Dashboard
+├── backend/                          FastAPI Backend
 │   └── app/
-│       ├── dashboard/            # Profile editor, resume upload
+│       ├── main.py                   Application entry point + lifespan
+│       ├── config.py                 Pydantic settings (env-driven)
+│       ├── models.py                 SQLModel table definitions
+│       ├── database.py               Async SQLAlchemy engine + session factory
+│       ├── api/
+│       │   ├── schemas.py            Pydantic request/response models
+│       │   ├── deps.py               JWT auth dependency injection
+│       │   └── routes/
+│       │       ├── auth.py           Register / login / refresh
+│       │       ├── profile.py        CRUD profile
+│       │       ├── resolve.py        Batch field resolution (hot path)
+│       │       ├── resume.py         Upload + async parse
+│       │       ├── feedback.py       User correction learning loop
+│       │       └── chat.py           Conversational profile setup
+│       ├── services/
+│       │   ├── resolver.py           5-layer field resolution engine
+│       │   ├── field_mapper.py       Fuzzy label → canonical key (rapidfuzz)
+│       │   ├── openai_client.py      Async OpenAI wrapper (chat + embeddings)
+│       │   ├── cache.py              Redis operations (answers, profiles, RAG)
+│       │   ├── resume_parser.py      PDF/DOCX extraction + structured parsing
+│       │   └── vector_store.py       pgvector similarity search
+│       └── core/
+│           ├── security.py           JWT creation/validation + bcrypt
+│           ├── logging.py            Structured JSON logging
+│           ├── tracing.py            OpenTelemetry spans
+│           └── exceptions.py         HTTP exception helpers
+│
+├── frontend/                         Next.js 14 Dashboard
+│   └── app/
+│       ├── dashboard/
+│       │   ├── profile/              Profile editor
+│       │   └── resume/               Resume upload + status
 │       ├── login/
 │       └── register/
 │
-└── docker-compose.yml            # PostgreSQL + Redis (optional)
+└── docker-compose.yml                PostgreSQL + Redis for local development
 ```
+
+---
+
+## API Reference
+
+### Authentication
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/auth/register` | Create a new account |
+| `POST` | `/api/v1/auth/login` | Authenticate and receive tokens |
+| `POST` | `/api/v1/auth/refresh` | Exchange refresh token for new access token |
+
+### Profile
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/profile` | Fetch current user profile |
+| `PUT` | `/api/v1/profile` | Update profile fields |
+
+### Core
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/resolve` | Batch resolve form fields → answers |
+| `POST` | `/api/v1/resume/upload` | Upload and parse a resume (PDF / DOCX / TXT) |
+| `GET` | `/api/v1/resume/status` | Resume processing status |
+| `POST` | `/api/v1/feedback` | Save a user-corrected answer |
+
+### System
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
+| `GET` | `/docs` | Interactive Swagger UI |
 
 ---
 
 ## Environment Variables
 
-Copy `backend/.env.example` to `backend/.env` and fill in:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENAI_API_KEY` | — | **Required.** OpenAI API key |
+| `DATABASE_URL` | `postgresql+asyncpg://...` | Async PostgreSQL connection string |
+| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL |
+| `JWT_SECRET_KEY` | — | **Required.** Random secret for signing JWTs |
+| `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Access token lifetime |
+| `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Refresh token lifetime |
+| `CORS_ORIGINS` | `[...]` | Allowed origins — must include your extension ID |
+| `OPENAI_LLM_MODEL` | `gpt-4o-mini` | LLM model for field inference |
+| `EMBEDDING_DIMENSIONS` | `1536` | Embedding size (must match the embed model) |
+| `MAX_RESUME_SIZE_MB` | `10` | Maximum resume upload size |
+| `ENABLE_TRACING` | `true` | Enable OpenTelemetry tracing |
 
-```env
-OPENAI_API_KEY=sk-...
-DATABASE_URL=postgresql+asyncpg://neuroapply:neuroapply_dev@localhost:5432/neuroapply
-REDIS_URL=redis://localhost:6379/0
-JWT_SECRET_KEY=your-secret-key
-CORS_ORIGINS=["chrome-extension://YOUR_EXTENSION_ID","http://localhost:3000"]
+---
+
+## Contributing
+
+1. Fork the repository and create a feature branch from `develop`
+2. Follow existing code style — no type stubs, no unnecessary abstractions
+3. Keep PRs focused — one concern per PR
+4. Test the extension manually on LinkedIn before submitting
+
+```bash
+git checkout develop
+git checkout -b feature/your-feature-name
 ```
 
 ---
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for details.
