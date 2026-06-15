@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const openProfileBtn  = document.getElementById('openProfileBtn');
   const resumeUpload    = document.getElementById('resumeUpload');
   const resumeStatus    = document.getElementById('resumeStatus');
+  const fillNowBtn      = document.getElementById('fillNowBtn');
 
   // ── Toggle ──────────────────────────────────────────────────────
   const { neuroapplyEnabled } = await chrome.storage.local.get('neuroapplyEnabled');
@@ -44,6 +45,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     showAuth();
   }
+
+  // ── Fill this page (manual trigger) ────────────────────────────
+  fillNowBtn.addEventListener('click', async () => {
+    fillNowBtn.textContent = 'Filling…';
+    fillNowBtn.disabled = true;
+
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) { fillNowBtn.textContent = 'No active tab'; return; }
+
+    try {
+      const response = await chrome.tabs.sendMessage(tab.id, { type: 'FILL_NOW' });
+      if (response?.status === 'no_modal') {
+        fillNowBtn.textContent = 'No Easy Apply modal found';
+      } else if (response?.status === 'context_invalid') {
+        fillNowBtn.textContent = 'Reload the LinkedIn tab first';
+      } else {
+        fillNowBtn.textContent = 'Done ✓';
+      }
+    } catch (err) {
+      fillNowBtn.textContent = 'Reload LinkedIn tab first';
+    }
+
+    setTimeout(() => {
+      fillNowBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Fill this page`;
+      fillNowBtn.disabled = false;
+    }, 3000);
+  });
 
   // ── Open full-page profile chat ─────────────────────────────────
   openProfileBtn.addEventListener('click', () => {
