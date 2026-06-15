@@ -1,27 +1,103 @@
 /**
  * NeuroApply AI — Content Script
- * Main orchestrator: watches for Easy Apply modals, extracts fields,
- * communicates with the service worker, and triggers autofill.
  */
 
 (() => {
   let isProcessing = false;
   let lastProcessedFields = null;
+  let _debounceTimer = null;
+  let _observerActive = false;
 
-  /**
-   * Find Easy Apply modal by looking for a floating container with form inputs
-   * that also contains "Apply" in its text — works regardless of obfuscated class names.
-   */
+  // ── isEnabled cache ──────────────────────────────────────────────────
+  // Avoids a chrome.storage.local.get() on every DOM mutation.
+  let _enabledCache = null;
+  let _enabledCacheTime = 0;
+  const ENABLED_CACHE_TTL = 5000;
+
+  function invalidateEnabledCache() {
+    _enabledCache = null;
+    _enabledCacheTime = 0;
+  }
+
+  async function isEnabled() {
+    if (!isContextValid()) return false;
+    const now = Date.now();
+    if (_enabledCache !== null && now - _enabledCacheTime < ENABLED_CACHE_TTL) {
+      return _enabledCache;
+    }
+    try {
+      const { neuroapplyEnabled } = await chrome.storage.local.get('neuroapplyEnabled');
+      _enabledCache = neuroapplyEnabled !== false;
+      _enabledCacheTime = Date.now();
+      return _enabledCache;
+    } catch {
+      return false;
+    }
+  }
+
+  // ── Context validity ─────────────────────────────────────────────────
+  function isContextValid() {
+    try {
+      return !!chrome.runtime?.id;
+    } catch {
+      return false;
+    }
+  }
+
+  // ── Reload banner ─────────────────────────────────────────────────────
+  // Shown when extension is reloaded while tab stays open (context invalidated).
+  function showReloadBanner() {
+    if (document.querySelector('.neuroapply-reload-banner')) return;
+    const banner = document.createElement('div');
+    banner.className = 'neuroapply-reload-banner';
+    banner.innerHTML = '⚠ <strong>NeuroApply</strong> was updated — <u style="cursor:pointer">click here to reload the page</u> and re-enable autofill.';
+    Object.assign(banner.style, {
+      position: 'fixed',
+      bottom: '72px',
+      right: '16px',
+      background: '#1e1b4b',
+      color: '#e0e7ff',
+      padding: '12px 16px',
+      borderRadius: '10px',
+      fontSize: '13px',
+      lineHeight: '1.5',
+      zIndex: '2147483647',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+      border: '1px solid rgba(129,140,248,0.4)',
+      cursor: 'pointer',
+      maxWidth: '280px',
+    });
+    banner.onclick = () => location.reload();
+    document.body.appendChild(banner);
+  }
+
+  // ── Modal detection ──────────────────────────────────────────────────
   function findEasyApplyModal() {
-    // Strategy 1: find any input and walk up to its form container
+    // Fast path: LinkedIn wraps Easy Apply in an ARIA dialog
+    const dialogs = document.querySelectorAll('[role="dialog"]');
+    for (const dialog of dialogs) {
+      const rect = dialog.getBoundingClientRect();
+      if (rect.width < 200 || rect.height < 150 || rect.top < 0) continue;
+      if (!dialog.querySelector('input:not([type="hidden"]), select, textarea')) continue;
+      const text = dialog.textContent || '';
+      if (
+        text.includes('Easy Apply') ||
+        text.includes('Apply') ||
+        text.includes('application') ||
+        text.includes('resume') ||
+        text.includes('Resume')
+      ) {
+        return dialog;
+      }
+    }
+
+    // Fallback: walk up from inputs
     const inputs = document.querySelectorAll('input:not([type="hidden"]), select, textarea');
     for (const input of inputs) {
-      // Walk up max 12 levels to find a sizeable overlay/modal container
       let el = input.parentElement;
       for (let i = 0; i < 12; i++) {
         if (!el) break;
         const rect = el.getBoundingClientRect();
-        // Must be a visible, reasonably-sized floating panel
         if (rect.width > 300 && rect.height > 200 && rect.top >= 0) {
           const text = el.innerText || '';
           if (
@@ -39,25 +115,21 @@
     return null;
   }
 
-  /**
-   * Process a detected modal: extract fields → resolve → autofill
-   */
+  // ── Modal processing ─────────────────────────────────────────────────
   async function processModal(modal) {
     if (isProcessing) return;
     isProcessing = true;
 
     try {
       modal.dataset.neuroapplyModal = 'true';
-      console.log('[NeuroApply] 🔍 Easy Apply modal detected, extracting fields...');
+      console.log('[NeuroApply] Easy Apply modal detected, extracting fields...');
 
-      // Extract fields
       const fields = window.FieldExtractor.extractFields(modal);
       if (!fields.length) {
         console.log('[NeuroApply] No fillable fields found in modal');
         return;
       }
 
-      // Skip if same fields as last time AND we already filled them
       const fieldSignature = fields.map(f => f.label).join('|');
       if (fieldSignature === lastProcessedFields) {
         console.log('[NeuroApply] Fields already processed, skipping');
@@ -66,10 +138,8 @@
 
       console.log(`[NeuroApply] Found ${fields.length} fields:`, fields.map(f => f.label));
 
-      // Bail out if the extension was reloaded while we were processing
       if (!isContextValid()) return;
 
-      // Send to service worker for resolution
       const response = await chrome.runtime.sendMessage({
         type: 'RESOLVE_FIELDS',
         payload: {
@@ -86,26 +156,30 @@
         },
       });
 
-      if (response && response.fields) {
-        console.log(`[NeuroApply] ✅ Resolved ${response.resolved_count}/${response.total_count} fields`);
+      if (response?.error) {
+        console.error(`[NeuroApply] Backend error: ${response.error} — ${response.message}`);
+        return;
+      }
 
-        // Only mark as processed if we actually resolved something
+      if (response && response.fields) {
+        console.log(`[NeuroApply] Resolved ${response.resolved_count}/${response.total_count} fields`);
+        console.log('[NeuroApply] Field values:', response.fields.map(f => `${f.label}: ${f.value ?? '(none)'}`));
+
         if (response.resolved_count > 0) {
           lastProcessedFields = fieldSignature;
         }
 
-        // Inject resolved values with original field metadata
         const enrichedFields = response.fields.map((resolved, i) => ({
           ...fields[i],
           ...resolved,
         }));
 
-        // Autofill
         const result = window.Autofill.fillAll(modal, enrichedFields);
-        console.log(`[NeuroApply] 📝 Filled: ${result.filled}, Unresolved: ${result.unresolved}`);
+        console.log(`[NeuroApply] Filled: ${result.filled}, Unresolved: ${result.unresolved}`);
 
-        // Show status notification
         showNotification(result.filled, result.unresolved);
+      } else {
+        console.warn('[NeuroApply] Unexpected response from background:', response);
       }
     } catch (err) {
       console.error('[NeuroApply] Error processing modal:', err);
@@ -114,11 +188,8 @@
     }
   }
 
-  /**
-   * Show a subtle notification of autofill results
-   */
+  // ── Notification ─────────────────────────────────────────────────────
   function showNotification(filled, unresolved) {
-    // Remove existing notification
     const existing = document.querySelector('.neuroapply-notification');
     if (existing) existing.remove();
 
@@ -135,16 +206,13 @@
     `;
     document.body.appendChild(notification);
 
-    // Auto-dismiss after 4 seconds
     setTimeout(() => {
       notification.classList.add('neuroapply-notification-exit');
       setTimeout(() => notification.remove(), 300);
     }, 4000);
   }
 
-  /**
-   * Listen for user corrections (when user manually changes a filled field)
-   */
+  // ── Correction listeners ─────────────────────────────────────────────
   function attachCorrectionListeners(modal) {
     const inputs = modal.querySelectorAll('input, select, textarea');
     inputs.forEach(input => {
@@ -155,8 +223,6 @@
         if (!isContextValid()) return;
         const value = input.value?.trim();
         if (!value) return;
-
-        // Only save inputs that are inside the confirmed Easy Apply modal
         if (!input.closest('[data-neuroapply-modal]')) return;
 
         const label = window.FieldExtractor.findLabel(input);
@@ -165,49 +231,62 @@
         try {
           chrome.runtime.sendMessage({
             type: 'SUBMIT_FEEDBACK',
-            payload: {
-              field_label: label,
-              corrected_value: value,
-              platform: 'linkedin',
-            },
+            payload: { field_label: label, corrected_value: value, platform: 'linkedin' },
           });
-        } catch { /* context invalidated, ignore */ }
-        console.log(`[NeuroApply] 💾 Saved answer for "${label}" → "${value}"`);
+        } catch { /* context invalidated */ }
+        console.log(`[NeuroApply] Saved answer for "${label}" → "${value}"`);
       });
     });
   }
 
-  /**
-   * Detect if the extension context is still valid.
-   * Returns false (and tears down the observer) when the extension is reloaded.
-   */
-  function isContextValid() {
-    try {
-      // Accessing chrome.runtime.id throws if the context is invalidated
-      return !!chrome.runtime?.id;
-    } catch {
-      return false;
+  // ── MutationObserver (debounced) ─────────────────────────────────────
+  const observer = new MutationObserver(() => {
+    if (!isContextValid()) {
+      observer.disconnect();
+      _observerActive = false;
+      showReloadBanner();
+      return;
     }
+
+    clearTimeout(_debounceTimer);
+    _debounceTimer = setTimeout(async () => {
+      const enabled = await isEnabled();
+      if (!enabled) return;
+
+      const modal = findEasyApplyModal();
+      if (modal) {
+        processModal(modal);
+        attachCorrectionListeners(modal);
+      } else {
+        lastProcessedFields = null;
+      }
+    }, 300);
+  });
+
+  function startObserver() {
+    if (_observerActive) return;
+    _observerActive = true;
+    observer.observe(document.body, { childList: true, subtree: true });
+    console.log('[NeuroApply] Active — watching for Easy Apply modals');
+
+    // Initial check
+    setTimeout(async () => {
+      if (!isContextValid() || !(await isEnabled())) return;
+      const modal = findEasyApplyModal();
+      if (modal) {
+        processModal(modal);
+        attachCorrectionListeners(modal);
+      }
+    }, 2000);
   }
 
-  /**
-   * Check if autofill is enabled via the popup toggle.
-   * Returns false when the extension context has been invalidated.
-   */
-  async function isEnabled() {
-    if (!isContextValid()) return false;
-    try {
-      const { neuroapplyEnabled } = await chrome.storage.local.get('neuroapplyEnabled');
-      return neuroapplyEnabled !== false; // ON by default unless explicitly turned off
-    } catch {
-      return false;
-    }
+  function stopObserver() {
+    clearTimeout(_debounceTimer);
+    observer.disconnect();
+    _observerActive = false;
   }
 
-  /**
-   * Listen for LinkedIn's Next / Review / Continue button clicks.
-   * Clears the processing gate so the next modal page is always processed.
-   */
+  // ── Next / Continue button listener ──────────────────────────────────
   document.addEventListener('click', async (e) => {
     if (!isContextValid()) return;
     const btn = e.target.closest('button, [role="button"]');
@@ -217,9 +296,9 @@
                   || text === 'next step' || text === 'review your application';
     if (!isNavBtn) return;
 
-    // Reset gate so the new page can be processed
     isProcessing = false;
     lastProcessedFields = null;
+    invalidateEnabledCache();
 
     setTimeout(async () => {
       if (!(await isEnabled())) return;
@@ -231,37 +310,51 @@
     }, 900);
   }, true);
 
-  /**
-   * MutationObserver — watch for Easy Apply modal changes.
-   * Disconnects itself when the extension context is invalidated.
-   */
-  const observer = new MutationObserver(async () => {
-    if (!isContextValid()) { observer.disconnect(); return; }
-    if (!(await isEnabled())) return;
+  // ── Manual fill trigger (from popup "Fill this page" button) ─────────
+  try {
+    chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+      if (msg.type !== 'FILL_NOW') return;
+      if (!isContextValid()) { sendResponse({ status: 'context_invalid' }); return true; }
 
-    const modal = findEasyApplyModal();
-    if (modal) {
-      setTimeout(() => {
-        processModal(modal);
-        attachCorrectionListeners(modal);
-      }, 500);
-    } else {
+      isProcessing = false;
       lastProcessedFields = null;
+      invalidateEnabledCache();
+
+      const modal = findEasyApplyModal();
+      if (!modal) {
+        console.log('[NeuroApply] FILL_NOW: no Easy Apply modal found on this page');
+        sendResponse({ status: 'no_modal' });
+        return true;
+      }
+      console.log('[NeuroApply] FILL_NOW triggered manually');
+      processModal(modal).then(() => {
+        attachCorrectionListeners(modal);
+        sendResponse({ status: 'ok' });
+      });
+      return true;
+    });
+  } catch { /* context invalid */ }
+
+  // ── Storage listener — activate/deactivate on toggle change ──────────
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local' || !('neuroapplyEnabled' in changes)) return;
+      invalidateEnabledCache();
+      if (changes.neuroapplyEnabled.newValue !== false) {
+        startObserver();
+      } else {
+        stopObserver();
+      }
+    });
+  } catch { /* context already invalid at load time */ }
+
+  // ── Init ─────────────────────────────────────────────────────────────
+  (async () => {
+    if (!isContextValid()) {
+      showReloadBanner();
+      return;
     }
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  // Check on page load too
-  setTimeout(async () => {
-    if (!isContextValid()) return;
-    if (!(await isEnabled())) return;
-    const modal = findEasyApplyModal();
-    if (modal) {
-      processModal(modal);
-      attachCorrectionListeners(modal);
-    }
-  }, 2000);
-
-  console.log('[NeuroApply] 🚀 Content script loaded — watching for Easy Apply modals');
+    if (!(await isEnabled())) return; // Disabled — do nothing, storage listener will activate later
+    startObserver();
+  })();
 })();

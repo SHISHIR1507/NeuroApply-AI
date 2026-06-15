@@ -5,11 +5,6 @@
 **Intelligent job application automation — from profile to submitted form in seconds.**
 
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17%20+%20pgvector-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
-[![Redis](https://img.shields.io/badge/Redis-Cache-DC382D?logo=redis&logoColor=white)](https://redis.io/)
-[![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [Overview](#overview) · [Architecture](#architecture) · [Quick Start](#quick-start) · [API Reference](#api-reference) · [Contributing](#contributing)
 
@@ -19,52 +14,52 @@
 
 ## Overview
 
-NeuroApply AI is a full-stack job application assistant that eliminates the repetitive work of filling out job application forms. A Chrome extension detects LinkedIn Easy Apply modals, extracts form fields, and resolves answers through a multi-layer intelligence pipeline — pulling from your structured profile, learned answer history, and LLM inference when needed.
+NeuroApply AI is a full-stack job application assistant that eliminates the repetitive work of filling out LinkedIn Easy Apply forms. A Chrome extension detects modals, extracts form fields, and resolves answers through a multi-layer intelligence pipeline — pulling from your structured profile, learned answer history, and LLM inference as a last resort.
 
 **What it does:**
 
-- Detects LinkedIn Easy Apply modals automatically
-- Fills text fields, dropdowns, radio buttons, and checkboxes
+- Detects LinkedIn Easy Apply modals automatically via a debounced MutationObserver
+- Fills text fields, dropdowns, number inputs, radio buttons, and checkboxes
 - Converts salary formats intelligently (e.g. `6 LPA` → `600000`)
 - Learns from your manual corrections and reuses them in future applications
 - Resolves most fields from cache in under 1ms on repeat visits
+- Provides a **"Fill this page"** button in the popup for instant manual triggering
+- Guided conversational onboarding with streaming chat to build your profile
 
 ---
 
 ## Architecture
 
-NeuroApply AI is composed of three independent layers that communicate over a REST API:
-
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Chrome Extension (Manifest V3)                                 │
-│  ┌─────────────┐  ┌──────────────┐  ┌───────────────────────┐  │
-│  │ Content     │  │ Field        │  │ Autofill Engine       │  │
-│  │ Script      │→ │ Extractor    │→ │ (React-compatible)    │  │
-│  └─────────────┘  └──────────────┘  └───────────────────────┘  │
-│         │                                                        │
-│  ┌──────▼──────┐                                                 │
-│  │ Service     │  (local answer cache + API client)              │
-│  │ Worker      │                                                 │
-└──┴──────┬──────┴─────────────────────────────────────────────── ┘
-          │ HTTP (JWT)
-┌─────────▼───────────────────────────────────────────────────────┐
-│  FastAPI Backend                                                  │
-│                                                                   │
-│  POST /api/v1/resolve                                             │
-│                                                                   │
-│  ┌──────────┐  ┌──────────┐  ┌─────────────┐  ┌─────────────┐  │
-│  │  Redis   │→ │ Profile  │→ │   Answer    │→ │ LLM Infer   │  │
-│  │  Cache   │  │   DB     │  │   History   │  │ (gpt-4o-m.) │  │
-│  └──────────┘  └──────────┘  └─────────────┘  └─────────────┘  │
-│                                                                   │
-│  PostgreSQL + pgvector · Redis · OpenAI                          │
-└───────────────────────────────────────────────────────────────── ┘
-          │
-┌─────────▼───────────────────────────────────────────────────────┐
-│  Next.js Dashboard (localhost:3000)                               │
-│  Profile editor · Resume upload · Application history            │
-└───────────────────────────────────────────────────────────────── ┘
+┌─────────────────────────────────────────────────────────────────────┐
+│  Chrome Extension (Manifest V3)                                      │
+│                                                                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐   │
+│  │ Content      │  │ Field        │  │ Autofill Engine          │   │
+│  │ Script       │→ │ Extractor    │→ │ (React-compatible)       │   │
+│  │ (debounced   │  │ (aria/label/ │  │ native setter + events   │   │
+│  │  observer)   │  │  DOM walk)   │  │                          │   │
+│  └──────────────┘  └──────────────┘  └──────────────────────────┘   │
+│         │                                                             │
+│  ┌──────▼──────┐   ┌───────────────────────────────────────────┐     │
+│  │ Service     │   │ Profile Page (profile.html)                │     │
+│  │ Worker      │   │ Full-screen chat UI — guided Q&A +         │     │
+│  │ (JWT cache  │   │ streaming free-form chat (SSE)             │     │
+│  │  + API)     │   └───────────────────────────────────────────┘     │
+└──┴──────┬──────┴───────────────────────────────────────────────────  ┘
+          │ HTTP (JWT Bearer)
+┌─────────▼─────────────────────────────────────────────────────────── ┐
+│  FastAPI Backend                                                       │
+│                                                                        │
+│  POST /api/v1/resolve    POST /api/v1/chat/stream                      │
+│                                                                        │
+│  ┌──────────┐  ┌──────────┐  ┌─────────────┐  ┌────────────────┐     │
+│  │  Redis   │→ │ Profile  │→ │   Answer    │→ │ LLM Inference  │     │
+│  │  Cache   │  │   DB     │  │   History   │  │ (gpt-4o-mini)  │     │
+│  └──────────┘  └──────────┘  └─────────────┘  └────────────────┘     │
+│                                                                        │
+│  PostgreSQL + pgvector · Redis · OpenAI                               │
+└─────────────────────────────────────────────────────────────────────  ┘
 ```
 
 ### Field Resolution Pipeline
@@ -76,8 +71,9 @@ Every form field runs through this chain until an answer is found:
 | 1 | **Redis Cache** | < 1ms | Previously resolved answer, keyed by user + field hash |
 | 2 | **Structured Profile** | 1–5ms | Direct column lookup — name, email, salary, LinkedIn URL, etc. |
 | 3 | **Answer History** | 5–10ms | Fuzzy-matched question from past applications |
-| 4 | **LLM Inference** | 200–500ms¹ | Full profile sent to GPT-4o-mini for semantic resolution |
-| 5 | **Unknown** | — | Left blank; highlighted for manual entry |
+| 4 | **Default Rules** | < 1ms | Pattern-matched defaults (notice period, salary ranges) |
+| 5 | **LLM Inference** | 200–500ms¹ | Full profile sent to GPT-4o-mini for semantic resolution |
+| 6 | **Unknown** | — | Left blank; highlighted for manual entry |
 
 > ¹ First occurrence only. LLM answers are cached in Redis and resolve in < 1ms on repeat.
 
@@ -88,49 +84,19 @@ Every form field runs through this chain until an answer is found:
 | Layer | Technology |
 |-------|-----------|
 | Chrome Extension | Manifest V3, Vanilla JS |
+| Profile Chat UI | Full-page HTML/CSS/JS with SSE streaming |
 | Backend | Python 3.13, FastAPI, async SQLAlchemy |
 | Database | PostgreSQL 17 + pgvector extension |
-| Cache | Redis (answer cache + profile cache + RAG cache) |
+| Cache | Redis (answer cache + profile cache) |
 | LLM | OpenAI GPT-4o-mini |
 | Embeddings | OpenAI text-embedding-3-small (1536-dim) |
-| Frontend | Next.js 14, TypeScript, Tailwind CSS |
 | Auth | JWT (access + refresh tokens, bcrypt passwords) |
-| Observability | Structured JSON logging, OpenTelemetry tracing |
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-
-| Requirement | Version |
-|-------------|---------|
-| Python | 3.11+ |
-| Node.js | 18+ |
-| PostgreSQL | 17+ with [pgvector](https://github.com/pgvector/pgvector) |
-| Redis | 7+ |
-| OpenAI API Key | — |
-
----
-
-### 1. Clone & configure
-
-```bash
-git clone https://github.com/SHISHIR1507/NeuroApply-AI.git
-cd NeuroApply-AI/backend
-cp .env.example .env
-```
-
-Open `.env` and set at minimum:
-
-```env
-OPENAI_API_KEY=sk-...
-JWT_SECRET_KEY=your-random-secret   # generate with: openssl rand -hex 32
-```
-
----
-
-### 2. Start PostgreSQL and Redis
+### 1. Start PostgreSQL and Redis
 
 **macOS (Homebrew):**
 
@@ -152,7 +118,7 @@ docker compose up -d   # starts PostgreSQL + Redis
 
 ---
 
-### 3. Run the backend
+### 2. Run the backend
 
 ```bash
 cd backend
@@ -172,18 +138,7 @@ Interactive API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
-### 4. Run the dashboard (optional)
-
-```bash
-cd frontend
-npm install
-npm run dev
-# Dashboard available at http://localhost:3000
-```
-
----
-
-### 5. Load the Chrome extension
+### 3. Load the Chrome extension
 
 1. Navigate to `chrome://extensions/`
 2. Enable **Developer mode** (top-right toggle)
@@ -199,12 +154,13 @@ CORS_ORIGINS=["chrome-extension://YOUR_EXTENSION_ID","http://localhost:3000"]
 
 ---
 
-### 6. Set up your profile
+### 4. Set up your profile
 
-1. Register at [http://localhost:3000/register](http://localhost:3000/register)
-2. Complete your profile at `/dashboard/profile` — the more fields you fill, the fewer LLM calls are needed
-3. Upload your resume at `/dashboard/resume`
-4. Click the NeuroApply AI icon in Chrome, log in, and enable the toggle
+1. Click the NeuroApply AI icon in Chrome
+2. Register with your email and password
+3. Click **Open Profile Setup** — a guided chat UI walks you through your profile (name, title, salary, skills, etc.)
+4. Optionally upload your resume in the popup — fields are auto-extracted
+5. The more your profile is filled, the fewer LLM calls are needed
 
 ---
 
@@ -212,11 +168,13 @@ CORS_ORIGINS=["chrome-extension://YOUR_EXTENSION_ID","http://localhost:3000"]
 
 1. Open any LinkedIn job posting and click **Easy Apply**
 2. NeuroApply AI detects the modal and fills all resolvable fields automatically
-3. A notification appears showing how many fields were filled
-4. Review and correct any field — your correction is saved immediately and used in all future applications
-5. Click **Next** to advance to the next page — fields are filled automatically on every step
+3. A notification shows how many fields were filled
+4. Review any field — your correction is saved immediately and reused in future applications
+5. Click **Next** to advance — fields are filled automatically on every step
 
-> **Important:** If you reload the extension, refresh the LinkedIn tab before using Easy Apply to avoid context invalidation errors.
+**Manual trigger:** If a page doesn't autofill, open the popup and click **Fill this page**. This bypasses all timing issues and immediately resolves the current modal.
+
+> **After reloading the extension**, always refresh the LinkedIn tab before applying. Old content scripts cannot be replaced without a page reload — the extension will show a banner prompting you to do this.
 
 ---
 
@@ -229,14 +187,18 @@ NeuroApply-AI/
 │   ├── manifest.json
 │   └── src/
 │       ├── content/
-│       │   ├── content.js            Orchestrator — modal detection, MutationObserver
+│       │   ├── content.js            Orchestrator — debounced observer, modal detection
 │       │   ├── fieldExtractor.js     DOM label extraction (aria, for/id, parent traversal)
-│       │   ├── autofill.js           React-compatible form filling engine
-│       │   └── content.css           Field highlight styles
+│       │   ├── autofill.js           React-compatible form filling (native setter + events)
+│       │   └── content.css           Field highlight + notification styles
 │       ├── background/
-│       │   └── background.js         Service worker — API client, local answer cache
+│       │   └── background.js         Service worker — JWT auth, API client, local answer cache
+│       ├── pages/
+│       │   ├── profile.html          Full-screen chat UI for profile setup
+│       │   ├── profile.css           Dark AI chat aesthetic
+│       │   └── profile.js            Guided Q&A onboarding + SSE streaming free-form chat
 │       └── popup/
-│           ├── popup.html            Quick login, toggle, resume upload shortcut
+│           ├── popup.html            Toggle, Fill this page, Profile Setup, Resume upload
 │           ├── popup.js
 │           └── popup.css
 │
@@ -255,27 +217,18 @@ NeuroApply-AI/
 │       │       ├── resolve.py        Batch field resolution (hot path)
 │       │       ├── resume.py         Upload + async parse
 │       │       ├── feedback.py       User correction learning loop
-│       │       └── chat.py           Conversational profile setup
+│       │       └── chat.py           Guided Q&A + SSE streaming chat
 │       ├── services/
-│       │   ├── resolver.py           5-layer field resolution engine
-│       │   ├── field_mapper.py       Fuzzy label → canonical key (rapidfuzz)
+│       │   ├── resolver.py           6-layer field resolution engine
+│       │   ├── field_mapper.py       Fuzzy label → canonical key (rapidfuzz, 200+ variations)
 │       │   ├── openai_client.py      Async OpenAI wrapper (chat + embeddings)
-│       │   ├── cache.py              Redis operations (answers, profiles, RAG)
+│       │   ├── cache.py              Redis operations (answers, profiles)
 │       │   ├── resume_parser.py      PDF/DOCX extraction + structured parsing
 │       │   └── vector_store.py       pgvector similarity search
 │       └── core/
 │           ├── security.py           JWT creation/validation + bcrypt
 │           ├── logging.py            Structured JSON logging
-│           ├── tracing.py            OpenTelemetry spans
 │           └── exceptions.py         HTTP exception helpers
-│
-├── frontend/                         Next.js 14 Dashboard
-│   └── app/
-│       ├── dashboard/
-│       │   ├── profile/              Profile editor
-│       │   └── resume/               Resume upload + status
-│       ├── login/
-│       └── register/
 │
 └── docker-compose.yml                PostgreSQL + Redis for local development
 ```
@@ -307,6 +260,8 @@ NeuroApply-AI/
 | `POST` | `/api/v1/resume/upload` | Upload and parse a resume (PDF / DOCX / TXT) |
 | `GET` | `/api/v1/resume/status` | Resume processing status |
 | `POST` | `/api/v1/feedback` | Save a user-corrected answer |
+| `POST` | `/api/v1/chat/field` | Guided Q&A — normalize and save a single profile field |
+| `POST` | `/api/v1/chat/stream` | SSE streaming free-form chat with profile context |
 
 ### System
 
@@ -331,21 +286,19 @@ NeuroApply-AI/
 | `OPENAI_LLM_MODEL` | `gpt-4o-mini` | LLM model for field inference |
 | `EMBEDDING_DIMENSIONS` | `1536` | Embedding size (must match the embed model) |
 | `MAX_RESUME_SIZE_MB` | `10` | Maximum resume upload size |
-| `ENABLE_TRACING` | `true` | Enable OpenTelemetry tracing |
 
 ---
 
-## Contributing
+## Troubleshooting
 
-1. Fork the repository and create a feature branch from `develop`
-2. Follow existing code style — no type stubs, no unnecessary abstractions
-3. Keep PRs focused — one concern per PR
-4. Test the extension manually on LinkedIn before submitting
-
-```bash
-git checkout develop
-git checkout -b feature/your-feature-name
-```
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Fields not filling, no log in console | Extension toggle is off | Open popup, enable the toggle |
+| `chrome-extension://invalid/` errors | Extension reloaded without tab refresh | Reload the LinkedIn tab |
+| "Fill this page" says "Reload LinkedIn tab first" | Old content script, context invalidated | Reload the LinkedIn tab |
+| Backend error: `auth_required` | Token expired or cleared | Sign out and sign in again from the popup |
+| Backend error: `network_error` | Backend not running | Run `uvicorn app.main:app --reload --port 8000` |
+| Fields show "0 filled" | Profile incomplete | Open Profile Setup and complete your profile |
 
 ---
 
