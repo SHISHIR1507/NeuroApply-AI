@@ -16,6 +16,7 @@ Observability:
   - Per-request summary log with latency breakdown
 """
 
+import asyncio
 import json
 import random
 import time
@@ -355,26 +356,25 @@ async def resolve_fields_batch(
 ) -> list[dict]:
     """
     Batch resolve multiple fields.
-    Optimized: batch-checks Redis cache first, then resolves misses individually.
-    
-    Fully instrumented with per-batch summary logging.
-    
-    Args:
-        fields: list of {id, label, type, required, options, currentValue}
-        
-    Returns:
-        list of {field_id, value, source, confidence, canonical_key}
+
+    Pipeline:
+      1. Single Redis round-trip for all fields (batch cache check)
+      2. Fetch user profile once — shared across all misses
+      3. Sequential DB resolution: profile columns → answer history → default rules
+      4. Parallel LLM inference for all remaining fields (asyncio.gather)
+
+    This keeps DB operations sequential (safe for a shared AsyncSession) while
+    running all LLM calls concurrently — the dominant latency source.
     """
     if not fields:
         return []
 
     batch_start = time.perf_counter()
-    results = []
-    cache_miss_indices = []
-    source_counts = {"cache": 0, "profile": 0, "history": 0, "rag_cache": 0, "resume_rag": 0, "default_rule": 0, "llm_infer": 0, "unknown": 0}
+    results: list[Optional[dict]] = [None] * len(fields)
+    source_counts = {"cache": 0, "profile": 0, "history": 0, "default_rule": 0, "llm_infer": 0, "unknown": 0}
 
-    # ----- Batch cache check (single Redis round-trip) -----
-    with LatencyTimer("batch_cache_check", logger, field_count=len(fields)) as t:
+    # ── Phase 1: Batch Redis check (single round-trip) ───────────────────
+    with LatencyTimer("batch_cache_check", logger, field_count=len(fields)):
         with traced_span("batch_cache_check", field_count=len(fields)) as span:
             field_hashes = [generate_field_hash(f["label"]) for f in fields]
             cached_values = await cache_service.get_cached_answers(str(user_id), field_hashes)
@@ -382,42 +382,121 @@ async def resolve_fields_batch(
             span.set_attribute("cache.hits", cache_hits)
             span.set_attribute("cache.misses", len(fields) - cache_hits)
 
+    cache_miss_indices = []
     for i, (field, cached_value) in enumerate(zip(fields, cached_values)):
         if cached_value is not None:
-            results.append({
+            results[i] = {
                 "field_id": field.get("id", str(i)),
                 "label": field["label"],
                 "value": cached_value,
                 "source": "cache",
                 "confidence": 1.0,
                 "canonical_key": None,
-            })
+            }
             source_counts["cache"] += 1
         else:
             cache_miss_indices.append(i)
-            results.append(None)  # Placeholder
 
-    # ----- Resolve cache misses -----
-    with traced_span("resolve_cache_misses", miss_count=len(cache_miss_indices)):
-        for i in cache_miss_indices:
-            field = fields[i]
-            resolved = await resolve_single_field(
-                db=db,
-                user_id=user_id,
-                label=field["label"],
-                field_type=field.get("type", "text"),
-                options=field.get("options") or [],
-            )
-            results[i] = {
-                "field_id": field.get("id", str(i)),
-                "label": field["label"],
-                **resolved,
-            }
-            source = resolved.get("source", "unknown")
-            if source in source_counts:
-                source_counts[source] += 1
+    if not cache_miss_indices:
+        batch_ms = (time.perf_counter() - batch_start) * 1000
+        logger.info(f"Batch resolution complete (full cache): {cache_hits}/{len(fields)} in {batch_ms:.1f}ms")
+        return results
 
-    # ----- Summary log -----
+    # ── Phase 2: Fetch profile once for all misses ────────────────────────
+    profile: Optional[dict] = None
+    try:
+        profile = await _get_profile(db, user_id)
+    except Exception as e:
+        logger.warning(f"[BATCH] Profile fetch failed: {e}")
+        await db.rollback()
+
+    # ── Phase 3: Sequential DB resolution (profile → history → defaults) ─
+    # DB operations share the session — must stay sequential.
+    # LLM-needed fields are collected and dispatched in parallel after.
+    pending_llm: list[tuple[int, dict, str, Optional[str]]] = []  # (index, field, field_hash, canonical_key)
+
+    for i in cache_miss_indices:
+        field = fields[i]
+        label = field["label"]
+        field_hash = field_hashes[i]
+
+        canonical_key, mapping_confidence = map_to_canonical(label)
+
+        # Structured profile column
+        if canonical_key and canonical_key in PROFILE_DIRECT_FIELDS and mapping_confidence >= 0.75 and profile:
+            raw = profile.get(canonical_key) if isinstance(profile, dict) else getattr(profile, canonical_key, None)
+            if raw is not None:
+                val = _clean_profile_value(canonical_key, raw)
+                await cache_service.cache_answer(str(user_id), field_hash, val)
+                results[i] = {"field_id": field.get("id", str(i)), "label": label, "value": val, "source": "profile", "confidence": mapping_confidence, "canonical_key": canonical_key}
+                source_counts["profile"] += 1
+                continue
+
+        # Answer history
+        try:
+            historical = await _find_historical_answer(db, user_id, canonical_key, label)
+        except Exception as e:
+            logger.warning(f"[BATCH] History lookup failed for '{label}': {e}")
+            await db.rollback()
+            historical = None
+
+        if historical and historical["confidence"] >= 0.75:
+            await cache_service.cache_answer(str(user_id), field_hash, historical["value"])
+            results[i] = {"field_id": field.get("id", str(i)), "label": label, "value": historical["value"], "source": "history", "confidence": historical["confidence"], "canonical_key": canonical_key}
+            source_counts["history"] += 1
+            continue
+
+        # Default rules (pattern matching, no network)
+        default_val = _apply_default_rules(label, profile)
+        if default_val is not None:
+            await cache_service.cache_answer(str(user_id), field_hash, default_val)
+            results[i] = {"field_id": field.get("id", str(i)), "label": label, "value": default_val, "source": "default_rule", "confidence": 0.85, "canonical_key": canonical_key}
+            source_counts["default_rule"] += 1
+            continue
+
+        # Needs LLM — queue for parallel dispatch
+        pending_llm.append((i, field, field_hash, canonical_key))
+
+    # ── Phase 4: Parallel LLM inference ──────────────────────────────────
+    if pending_llm:
+        if profile:
+            profile_dict = profile if isinstance(profile, dict) else {}
+            with LatencyTimer("parallel_llm_inference", logger, field_count=len(pending_llm)):
+                llm_tasks = [
+                    _llm_infer_answer(
+                        label=field["label"],
+                        field_type=field.get("type", "text"),
+                        options=field.get("options") or [],
+                        profile=profile_dict,
+                    )
+                    for _, field, _, _ in pending_llm
+                ]
+                llm_values = await asyncio.gather(*llm_tasks, return_exceptions=True)
+
+            for (i, field, field_hash, canonical_key), llm_val in zip(pending_llm, llm_values):
+                label = field["label"]
+                if isinstance(llm_val, Exception):
+                    logger.warning(f"[BATCH] LLM failed for '{label}': {llm_val}")
+                    llm_val = None
+                if llm_val is not None:
+                    await cache_service.cache_answer(str(user_id), field_hash, llm_val)
+                    source_counts["llm_infer"] += 1
+                else:
+                    source_counts["unknown"] += 1
+                results[i] = {
+                    "field_id": field.get("id", str(i)),
+                    "label": label,
+                    "value": llm_val,
+                    "source": "llm_infer" if llm_val else "unknown",
+                    "confidence": 0.8 if llm_val else 0.0,
+                    "canonical_key": canonical_key,
+                }
+        else:
+            for i, field, _, canonical_key in pending_llm:
+                results[i] = {"field_id": field.get("id", str(i)), "label": field["label"], "value": None, "source": "unknown", "confidence": 0.0, "canonical_key": canonical_key}
+                source_counts["unknown"] += 1
+
+    # ── Summary log ───────────────────────────────────────────────────────
     batch_ms = (time.perf_counter() - batch_start) * 1000
     resolved_count = sum(1 for r in results if r and r.get("value") is not None)
 
@@ -430,6 +509,7 @@ async def resolve_fields_batch(
             "total_count": len(fields),
             "cache_hits": source_counts["cache"],
             "cache_misses": len(cache_miss_indices),
+            "llm_parallel_count": len(pending_llm),
             **{f"source_{k}": v for k, v in source_counts.items()},
         },
     )
