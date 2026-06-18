@@ -71,72 +71,175 @@
     document.body.appendChild(banner);
   }
 
+  // ── Chat Widget ──────────────────────────────────────────────────────
+  const ChatWidget = (() => {
+    let root = null;
+    let body = null;
+    let typingEl = null;
+    let closeTimer = null;
+
+    const QUIPS = [
+      "On it! ⚡",
+      "Let me handle this ✨",
+      "Easy Apply? Easy done 🚀",
+      "I got you 👊",
+    ];
+
+    function build() {
+      if (root) return;
+      root = document.createElement('div');
+      root.id = 'na-widget';
+      root.innerHTML = `
+        <div class="na-header">
+          <div class="na-brand">
+            <div class="na-brand-dot"></div>
+            NeuroApply
+          </div>
+          <button class="na-close" title="Dismiss">×</button>
+        </div>
+        <div class="na-body"></div>
+      `;
+      root.querySelector('.na-close').addEventListener('click', close);
+      document.body.appendChild(root);
+      body = root.querySelector('.na-body');
+    }
+
+    function open() {
+      build();
+      clearTimeout(closeTimer);
+      root.classList.remove('na-closing');
+      void root.offsetWidth; // force reflow so transition fires
+      root.classList.add('na-open');
+    }
+
+    function close() {
+      if (!root) return;
+      clearTimeout(closeTimer);
+      root.classList.add('na-closing');
+      root.classList.remove('na-open');
+    }
+
+    function clear() {
+      if (body) body.innerHTML = '';
+      typingEl = null;
+    }
+
+    function say(html, delayMs = 0) {
+      build();
+      const add = () => {
+        stopTyping();
+        const m = document.createElement('div');
+        m.className = 'na-msg';
+        m.innerHTML = html;
+        body.appendChild(m);
+        body.scrollTop = body.scrollHeight;
+      };
+      delayMs ? setTimeout(add, delayMs) : add();
+    }
+
+    function startTyping() {
+      if (typingEl) return;
+      build();
+      typingEl = document.createElement('div');
+      typingEl.className = 'na-typing-bubble';
+      typingEl.innerHTML = '<div class="na-dot"></div><div class="na-dot"></div><div class="na-dot"></div>';
+      body.appendChild(typingEl);
+      body.scrollTop = body.scrollHeight;
+    }
+
+    function stopTyping() {
+      if (typingEl) { typingEl.remove(); typingEl = null; }
+    }
+
+    function scheduleClose(ms) {
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(close, ms);
+    }
+
+    function isOpen() {
+      return root?.classList.contains('na-open');
+    }
+
+    function quip() {
+      return QUIPS[Math.floor(Math.random() * QUIPS.length)];
+    }
+
+    return { open, close, clear, say, startTyping, stopTyping, scheduleClose, isOpen, quip };
+  })();
+
   // ── Modal detection ──────────────────────────────────────────────────
+  // Only matches LinkedIn's actual Easy Apply overlay — never search filters,
+  // inline page content, or other dialogs.
   function findEasyApplyModal() {
-    // Fast path: LinkedIn wraps Easy Apply in an ARIA dialog
     const dialogs = document.querySelectorAll('[role="dialog"]');
     for (const dialog of dialogs) {
       const rect = dialog.getBoundingClientRect();
-      if (rect.width < 200 || rect.height < 150 || rect.top < 0) continue;
-      if (!dialog.querySelector('input:not([type="hidden"]), select, textarea')) continue;
-      const text = dialog.textContent || '';
-      if (
-        text.includes('Easy Apply') ||
-        text.includes('Apply') ||
-        text.includes('application') ||
-        text.includes('resume') ||
-        text.includes('Resume')
-      ) {
-        return dialog;
-      }
-    }
+      if (rect.width < 200 || rect.height < 150) continue;
 
-    // Fallback: walk up from inputs
-    const inputs = document.querySelectorAll('input:not([type="hidden"]), select, textarea');
-    for (const input of inputs) {
-      let el = input.parentElement;
-      for (let i = 0; i < 12; i++) {
-        if (!el) break;
-        const rect = el.getBoundingClientRect();
-        if (rect.width > 300 && rect.height > 200 && rect.top >= 0) {
-          const text = el.innerText || '';
-          if (
-            text.includes('Apply') ||
-            text.includes('application') ||
-            text.includes('resume') ||
-            text.includes('Resume')
-          ) {
-            return el;
+      // 1. aria-label on the dialog element itself
+      const ariaLabel = (dialog.getAttribute('aria-label') || '').toLowerCase();
+      if (ariaLabel.includes('easy apply') || ariaLabel.startsWith('apply to')) {
+        if (dialog.querySelector('input, select, textarea')) return dialog;
+        continue;
+      }
+
+      // 2. aria-labelledby pointing to a heading
+      const labelId = dialog.getAttribute('aria-labelledby');
+      if (labelId) {
+        const heading = document.getElementById(labelId);
+        if (heading) {
+          const t = heading.textContent.trim().toLowerCase();
+          if (t === 'easy apply' || t.startsWith('apply to')) {
+            if (dialog.querySelector('input, select, textarea')) return dialog;
           }
+          continue;
         }
-        el = el.parentElement;
+      }
+
+      // 3. h1/h2/h3 inside the dialog whose text is "Apply to …" or "Easy Apply"
+      for (const h of dialog.querySelectorAll('h1, h2, h3')) {
+        const t = h.textContent.trim().toLowerCase();
+        if (t === 'easy apply' || t.startsWith('apply to')) {
+          if (dialog.querySelector('input, select, textarea')) return dialog;
+          break;
+        }
       }
     }
     return null;
   }
 
   // ── Modal processing ─────────────────────────────────────────────────
+  function cropLabel(label) {
+    return label.length > 30 ? label.slice(0, 29) + '…' : label;
+  }
+
   async function processModal(modal) {
     if (isProcessing) return;
     isProcessing = true;
 
+    ChatWidget.open();
+    ChatWidget.clear();
+
     try {
       modal.dataset.neuroapplyModal = 'true';
-      console.log('[NeuroApply] Easy Apply modal detected, extracting fields...');
 
       const fields = window.FieldExtractor.extractFields(modal);
       if (!fields.length) {
-        console.log('[NeuroApply] No fillable fields found in modal');
+        ChatWidget.say('No fillable fields on this step.');
+        ChatWidget.scheduleClose(4000);
         return;
       }
 
       const fieldSignature = fields.map(f => f.label).join('|');
       if (fieldSignature === lastProcessedFields) {
-        console.log('[NeuroApply] Fields already processed, skipping');
+        ChatWidget.close();
         return;
       }
 
       console.log(`[NeuroApply] Found ${fields.length} fields:`, fields.map(f => f.label));
+
+      ChatWidget.say(`${ChatWidget.quip()} Found <b>${fields.length}</b> question${fields.length !== 1 ? 's' : ''} to fill.`);
+      ChatWidget.startTyping();
 
       if (!isContextValid()) return;
 
@@ -156,14 +259,17 @@
         },
       });
 
+      ChatWidget.stopTyping();
+
       if (response?.error) {
         console.error(`[NeuroApply] Backend error: ${response.error} — ${response.message}`);
+        ChatWidget.say(`⚠️ ${response.message || response.error}`);
+        ChatWidget.scheduleClose(5000);
         return;
       }
 
       if (response && response.fields) {
         console.log(`[NeuroApply] Resolved ${response.resolved_count}/${response.total_count} fields`);
-        console.log('[NeuroApply] Field values:', response.fields.map(f => `${f.label}: ${f.value ?? '(none)'}`));
 
         if (response.resolved_count > 0) {
           lastProcessedFields = fieldSignature;
@@ -177,12 +283,34 @@
         const result = window.Autofill.fillAll(modal, enrichedFields);
         console.log(`[NeuroApply] Filled: ${result.filled}, Unresolved: ${result.unresolved}`);
 
-        showNotification(result.filled, result.unresolved);
+        // Show per-field status (cap at 6 lines to keep widget compact)
+        const lines = enrichedFields.slice(0, 6).map(f =>
+          f.value
+            ? `<span class="na-ok">✓</span> ${cropLabel(f.label)}`
+            : `<span class="na-warn">⚠</span> ${cropLabel(f.label)}`
+        );
+        if (enrichedFields.length > 6) {
+          lines.push(`<span class="na-muted">+ ${enrichedFields.length - 6} more</span>`);
+        }
+        ChatWidget.say(lines.join('<br>'));
+
+        // Done summary
+        const total = result.filled + result.unresolved;
+        const doneHtml = result.unresolved === 0
+          ? `All <b>${result.filled}</b> filled — you're good! ✨`
+          : `Filled <b>${result.filled}/${total}</b> · <span class="na-warn">${result.unresolved} need your input</span>`;
+        ChatWidget.say(doneHtml, 350);
+        ChatWidget.scheduleClose(10000);
       } else {
-        console.warn('[NeuroApply] Unexpected response from background:', response);
+        console.warn('[NeuroApply] Unexpected response:', response);
+        ChatWidget.say('Got an unexpected response. Check console.');
+        ChatWidget.scheduleClose(5000);
       }
     } catch (err) {
       console.error('[NeuroApply] Error processing modal:', err);
+      ChatWidget.stopTyping();
+      ChatWidget.say('Something went wrong — check the console.');
+      ChatWidget.scheduleClose(5000);
     } finally {
       isProcessing = false;
     }
@@ -252,6 +380,12 @@
     _debounceTimer = setTimeout(async () => {
       const enabled = await isEnabled();
       if (!enabled) return;
+
+      // Fast bail: no dialog in DOM → definitely not on Easy Apply
+      if (!document.querySelector('[role="dialog"]')) {
+        lastProcessedFields = null;
+        return;
+      }
 
       const modal = findEasyApplyModal();
       if (modal) {
