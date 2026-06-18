@@ -107,48 +107,71 @@ async function resolveFields(payload) {
     return { error: 'auth_required', message: 'Please log in first' };
   }
 
-  // Try backend
+  // Read the entire answer cache once — avoids N sequential storage reads
+  const answerCache = await LocalCache.getAnswerCache();
+  const now = Date.now();
+  const MAX_AGE = 86400000; // 24h
+
+  // Partition fields: local cache hits vs. backend-needed misses
+  const localHits = [];        // parallel array to payload.fields; null = miss
+  const fieldsForBackend = []; // only fields not in local cache
+
+  for (const field of payload.fields) {
+    const entry = answerCache[simpleHash(field.label)];
+    if (entry && now - entry.timestamp <= MAX_AGE) {
+      localHits.push({ field_id: field.id, label: field.label, value: entry.value, source: 'local_cache', confidence: 0.9 });
+    } else {
+      localHits.push(null);
+      fieldsForBackend.push(field);
+    }
+  }
+
+  // All fields answered locally — skip the network entirely
+  if (fieldsForBackend.length === 0) {
+    console.log(`[NeuroApply BG] Full local cache hit (${localHits.length} fields)`);
+    return {
+      fields: localHits,
+      resolved_count: localHits.filter(f => f?.value).length,
+      total_count: localHits.length,
+    };
+  }
+
+  // Send only the uncached fields to the backend
   const result = await apiRequest('/resolve', {
     method: 'POST',
     body: JSON.stringify({
-      fields: payload.fields,
+      fields: fieldsForBackend,
       platform: payload.platform || 'linkedin',
       job_url: payload.jobUrl,
     }),
   });
 
   if (result.error === 'network_error') {
-    // Offline fallback: try local cache
-    console.log('[NeuroApply BG] Backend offline, using local cache');
-    const cachedResults = await Promise.all(
-      payload.fields.map(async (field) => {
-        const hash = simpleHash(field.label);
-        const cached = await LocalCache.getCachedAnswer(hash);
-        return {
-          field_id: field.id,
-          label: field.label,
-          value: cached,
-          source: cached ? 'local_cache' : 'unknown',
-          confidence: cached ? 0.8 : 0.0,
-        };
-      })
+    console.log('[NeuroApply BG] Backend offline, using local cache only');
+    const allFields = localHits.map((hit, i) =>
+      hit || { field_id: payload.fields[i].id, label: payload.fields[i].label, value: null, source: 'unknown', confidence: 0.0 }
     );
-
-    return {
-      fields: cachedResults,
-      resolved_count: cachedResults.filter(f => f.value).length,
-      total_count: cachedResults.length,
-    };
+    return { fields: allFields, resolved_count: allFields.filter(f => f.value).length, total_count: allFields.length };
   }
 
-  // Cache successful results locally
+  // Persist new backend results into the local cache (single write)
   if (result.fields) {
+    const updatedCache = { ...answerCache };
     for (const field of result.fields) {
-      if (field.value) {
-        const hash = simpleHash(field.label);
-        await LocalCache.cacheAnswer(hash, field.value);
-      }
+      if (field.value) updatedCache[simpleHash(field.label)] = { value: field.value, timestamp: now };
     }
+    await LocalCache.set('answerCache', updatedCache);
+  }
+
+  // Merge local hits + backend results, preserving original field order
+  if (result.fields) {
+    let backendIdx = 0;
+    const merged = localHits.map(hit => hit ?? (result.fields[backendIdx++] || null));
+    return {
+      fields: merged,
+      resolved_count: merged.filter(f => f?.value).length,
+      total_count: merged.length,
+    };
   }
 
   return result;

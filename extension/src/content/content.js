@@ -403,7 +403,7 @@
     observer.observe(document.body, { childList: true, subtree: true });
     console.log('[NeuroApply] Active — watching for Easy Apply modals');
 
-    // Initial check
+    // Initial check — 400ms lets the page settle without blocking early clicks
     setTimeout(async () => {
       if (!isContextValid() || !(await isEnabled())) return;
       const modal = findEasyApplyModal();
@@ -411,7 +411,7 @@
         processModal(modal);
         attachCorrectionListeners(modal);
       }
-    }, 2000);
+    }, 400);
   }
 
   function stopObserver() {
