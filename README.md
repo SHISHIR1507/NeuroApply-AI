@@ -85,6 +85,7 @@ Every form field runs through this chain until an answer is found:
 |-------|-----------|
 | Chrome Extension | Manifest V3, Vanilla JS |
 | Profile Chat UI | Full-page HTML/CSS/JS with SSE streaming |
+| Marketing Website | Next.js 16, Tailwind CSS v4, Framer Motion |
 | Backend | Python 3.13, FastAPI, async SQLAlchemy |
 | Database | PostgreSQL 17 + pgvector extension |
 | Cache | Redis (answer cache + profile cache) |
@@ -95,6 +96,19 @@ Every form field runs through this chain until an answer is found:
 ---
 
 ## Quick Start
+
+### 0. Run the marketing website (optional)
+
+```bash
+cd frontend
+npm install
+npm run dev
+# → http://localhost:3000
+```
+
+The landing page showcases the product with animated sections, an interactive resolution engine demo, and an "Add to Chrome" CTA. Built with Next.js 16 + Tailwind v4 + Framer Motion.
+
+---
 
 ### 1. Start PostgreSQL and Redis
 
@@ -175,63 +189,6 @@ CORS_ORIGINS=["chrome-extension://YOUR_EXTENSION_ID","http://localhost:3000"]
 **Manual trigger:** If a page doesn't autofill, open the popup and click **Fill this page**. This bypasses all timing issues and immediately resolves the current modal.
 
 > **After reloading the extension**, always refresh the LinkedIn tab before applying. Old content scripts cannot be replaced without a page reload — the extension will show a banner prompting you to do this.
-
----
-
-## Project Structure
-
-```
-NeuroApply-AI/
-│
-├── extension/                        Chrome Extension (Manifest V3)
-│   ├── manifest.json
-│   └── src/
-│       ├── content/
-│       │   ├── content.js            Orchestrator — debounced observer, modal detection
-│       │   ├── fieldExtractor.js     DOM label extraction (aria, for/id, parent traversal)
-│       │   ├── autofill.js           React-compatible form filling (native setter + events)
-│       │   └── content.css           Field highlight + notification styles
-│       ├── background/
-│       │   └── background.js         Service worker — JWT auth, API client, local answer cache
-│       ├── pages/
-│       │   ├── profile.html          Full-screen chat UI for profile setup
-│       │   ├── profile.css           Dark AI chat aesthetic
-│       │   └── profile.js            Guided Q&A onboarding + SSE streaming free-form chat
-│       └── popup/
-│           ├── popup.html            Toggle, Fill this page, Profile Setup, Resume upload
-│           ├── popup.js
-│           └── popup.css
-│
-├── backend/                          FastAPI Backend
-│   └── app/
-│       ├── main.py                   Application entry point + lifespan
-│       ├── config.py                 Pydantic settings (env-driven)
-│       ├── models.py                 SQLModel table definitions
-│       ├── database.py               Async SQLAlchemy engine + session factory
-│       ├── api/
-│       │   ├── schemas.py            Pydantic request/response models
-│       │   ├── deps.py               JWT auth dependency injection
-│       │   └── routes/
-│       │       ├── auth.py           Register / login / refresh
-│       │       ├── profile.py        CRUD profile
-│       │       ├── resolve.py        Batch field resolution (hot path)
-│       │       ├── resume.py         Upload + async parse
-│       │       ├── feedback.py       User correction learning loop
-│       │       └── chat.py           Guided Q&A + SSE streaming chat
-│       ├── services/
-│       │   ├── resolver.py           6-layer field resolution engine
-│       │   ├── field_mapper.py       Fuzzy label → canonical key (rapidfuzz, 200+ variations)
-│       │   ├── openai_client.py      Async OpenAI wrapper (chat + embeddings)
-│       │   ├── cache.py              Redis operations (answers, profiles)
-│       │   ├── resume_parser.py      PDF/DOCX extraction + structured parsing
-│       │   └── vector_store.py       pgvector similarity search
-│       └── core/
-│           ├── security.py           JWT creation/validation + bcrypt
-│           ├── logging.py            Structured JSON logging
-│           └── exceptions.py         HTTP exception helpers
-│
-└── docker-compose.yml                PostgreSQL + Redis for local development
-```
 
 ---
 
