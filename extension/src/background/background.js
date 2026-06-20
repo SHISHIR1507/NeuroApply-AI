@@ -260,4 +260,26 @@ async function getAuthStatus() {
   return { authenticated: !!token };
 }
 
+// ------------------------------------------------------------------
+// Auto-reload LinkedIn tabs when the extension reloads (DEV ONLY)
+// ------------------------------------------------------------------
+// Reloading the extension kills the content script in every open tab; it
+// can't be revived without a page refresh. In development we just refresh
+// those tabs automatically so there's no manual refresh step. In production
+// we skip this — refreshing could wipe a user's in-progress application, so
+// they get the in-page "needs a refresh" banner instead.
+chrome.runtime.onInstalled.addListener(async () => {
+  try {
+    const self = await chrome.management.getSelf();
+    if (self.installType !== 'development') return;
+    const tabs = await chrome.tabs.query({ url: '*://*.linkedin.com/*' });
+    for (const tab of tabs) {
+      if (tab.id) chrome.tabs.reload(tab.id);
+    }
+    console.log(`[NeuroApply BG] Dev mode — reloaded ${tabs.length} LinkedIn tab(s)`);
+  } catch (e) {
+    console.warn('[NeuroApply BG] Auto-reload skipped:', e?.message);
+  }
+});
+
 console.log('[NeuroApply] 🧠 Service worker loaded');
