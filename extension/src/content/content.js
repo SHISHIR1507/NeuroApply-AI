@@ -7,6 +7,7 @@
   let lastProcessedFields = null;
   let _debounceTimer = null;
   let _observerActive = false;
+  let _heartbeat = null;
 
   // ── isEnabled cache ──────────────────────────────────────────────────
   // Avoids a chrome.storage.local.get() on every DOM mutation.
@@ -46,29 +47,54 @@
 
   // ── Reload banner ─────────────────────────────────────────────────────
   // Shown when extension is reloaded while tab stays open (context invalidated).
+  // A content script can never reconnect to a reloaded extension — the page
+  // MUST be refreshed. We make that obvious and one-click.
   function showReloadBanner() {
     if (document.querySelector('.neuroapply-reload-banner')) return;
     const banner = document.createElement('div');
     banner.className = 'neuroapply-reload-banner';
-    banner.innerHTML = '⚠ <strong>NeuroApply</strong> was updated — <u style="cursor:pointer">click here to reload the page</u> and re-enable autofill.';
+    banner.innerHTML =
+      '<span style="font-size:16px">🔄</span>' +
+      '<span><strong>NeuroApply needs a refresh</strong><br>' +
+      '<span style="opacity:.85;font-size:12px">The extension reloaded — click to refresh this tab and re-enable autofill.</span></span>';
     Object.assign(banner.style, {
       position: 'fixed',
-      bottom: '72px',
-      right: '16px',
-      background: '#1e1b4b',
-      color: '#e0e7ff',
-      padding: '12px 16px',
-      borderRadius: '10px',
-      fontSize: '13px',
-      lineHeight: '1.5',
+      top: '16px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+      color: '#fff',
+      padding: '14px 20px',
+      borderRadius: '12px',
+      fontSize: '13.5px',
+      lineHeight: '1.45',
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       zIndex: '2147483647',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-      border: '1px solid rgba(129,140,248,0.4)',
+      boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+      border: '1px solid rgba(255,255,255,0.2)',
       cursor: 'pointer',
-      maxWidth: '280px',
+      maxWidth: '420px',
     });
     banner.onclick = () => location.reload();
     document.body.appendChild(banner);
+  }
+
+  // ── Clean shutdown on context loss ───────────────────────────────────
+  // Once the extension context is invalidated there is nothing we can do but
+  // tell the user to refresh. Stop ALL activity so we never spam the console
+  // with chrome-extension://invalid/ errors.
+  let _dead = false;
+  function die() {
+    if (_dead) return;
+    _dead = true;
+    try { observer.disconnect(); } catch {}
+    _observerActive = false;
+    clearTimeout(_debounceTimer);
+    clearInterval(_heartbeat);
+    showReloadBanner();
   }
 
   // ── Chat Widget ──────────────────────────────────────────────────────
@@ -213,67 +239,73 @@
     return label.length > 30 ? label.slice(0, 29) + '…' : label;
   }
 
+  // Resolve fields via the service worker, but never hang forever.
+  // MV3 service workers sleep; a dead/slow worker must not lock isProcessing.
+  function resolveWithTimeout(payload, ms = 15000) {
+    return Promise.race([
+      chrome.runtime.sendMessage({ type: 'RESOLVE_FIELDS', payload }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('resolve_timeout')), ms)),
+    ]);
+  }
+
   async function processModal(modal) {
     if (isProcessing) return;
+
+    // ── Cheap pre-check FIRST — runs on every debounced mutation. ──
+    // It must not touch the widget unless there's genuinely new work,
+    // otherwise the widget flashes open/closed as LinkedIn mutates the DOM.
+    let fields;
+    try {
+      fields = window.FieldExtractor.extractFields(modal);
+    } catch {
+      return;
+    }
+    if (!fields.length) return;
+
+    const fieldSignature = fields.map(f => f.label).join('|');
+    if (fieldSignature === lastProcessedFields) return; // already handled — stay silent
+
+    // ── Commit. Mark processed up-front so rapid re-entry bails above. ──
     isProcessing = true;
+    lastProcessedFields = fieldSignature;
+    modal.dataset.neuroapplyModal = 'true';
 
     ChatWidget.open();
     ChatWidget.clear();
+    console.log(`[NeuroApply] Found ${fields.length} fields:`, fields.map(f => f.label));
+    ChatWidget.say(`${ChatWidget.quip()} Found <b>${fields.length}</b> question${fields.length !== 1 ? 's' : ''} to fill.`);
+    ChatWidget.startTyping();
 
     try {
-      modal.dataset.neuroapplyModal = 'true';
+      if (!isContextValid()) { lastProcessedFields = null; return; }
 
-      const fields = window.FieldExtractor.extractFields(modal);
-      if (!fields.length) {
-        ChatWidget.say('No fillable fields on this step.');
-        ChatWidget.scheduleClose(4000);
-        return;
-      }
-
-      const fieldSignature = fields.map(f => f.label).join('|');
-      if (fieldSignature === lastProcessedFields) {
-        ChatWidget.close();
-        return;
-      }
-
-      console.log(`[NeuroApply] Found ${fields.length} fields:`, fields.map(f => f.label));
-
-      ChatWidget.say(`${ChatWidget.quip()} Found <b>${fields.length}</b> question${fields.length !== 1 ? 's' : ''} to fill.`);
-      ChatWidget.startTyping();
-
-      if (!isContextValid()) return;
-
-      const response = await chrome.runtime.sendMessage({
-        type: 'RESOLVE_FIELDS',
-        payload: {
-          fields: fields.map(f => ({
-            id: f.id,
-            label: f.label,
-            type: f.type,
-            required: f.required,
-            options: f.options?.map(o => typeof o === 'string' ? o : o.text),
-            currentValue: f.currentValue,
-          })),
-          platform: 'linkedin',
-          jobUrl: window.location.href,
-        },
+      const response = await resolveWithTimeout({
+        fields: fields.map(f => ({
+          id: f.id,
+          label: f.label,
+          type: f.type,
+          required: f.required,
+          options: f.options?.map(o => typeof o === 'string' ? o : o.text),
+          currentValue: f.currentValue,
+        })),
+        platform: 'linkedin',
+        jobUrl: window.location.href,
       });
 
       ChatWidget.stopTyping();
 
       if (response?.error) {
         console.error(`[NeuroApply] Backend error: ${response.error} — ${response.message}`);
+        // Keep the signature so we don't hammer a down backend on every mutation.
+        // Recovery: "Fill this page" or clicking Next resets it.
         ChatWidget.say(`⚠️ ${response.message || response.error}`);
-        ChatWidget.scheduleClose(5000);
+        ChatWidget.say('Tip: click <b>Fill this page</b> in the popup to retry.', 300);
+        ChatWidget.scheduleClose(6000);
         return;
       }
 
       if (response && response.fields) {
         console.log(`[NeuroApply] Resolved ${response.resolved_count}/${response.total_count} fields`);
-
-        if (response.resolved_count > 0) {
-          lastProcessedFields = fieldSignature;
-        }
 
         const enrichedFields = response.fields.map((resolved, i) => ({
           ...fields[i],
@@ -307,10 +339,13 @@
         ChatWidget.scheduleClose(5000);
       }
     } catch (err) {
+      const timedOut = err?.message === 'resolve_timeout';
       console.error('[NeuroApply] Error processing modal:', err);
       ChatWidget.stopTyping();
-      ChatWidget.say('Something went wrong — check the console.');
-      ChatWidget.scheduleClose(5000);
+      ChatWidget.say(timedOut
+        ? '⏱ Backend took too long. Click <b>Fill this page</b> to retry.'
+        : 'Something went wrong — check the console.');
+      ChatWidget.scheduleClose(6000);
     } finally {
       isProcessing = false;
     }
@@ -367,51 +402,45 @@
     });
   }
 
-  // ── MutationObserver (debounced) ─────────────────────────────────────
-  const observer = new MutationObserver(() => {
-    if (!isContextValid()) {
-      observer.disconnect();
-      _observerActive = false;
-      showReloadBanner();
+  // ── Scan for a modal and process it (single source of truth) ─────────
+  async function scan() {
+    if (!isContextValid() || !(await isEnabled())) return;
+
+    // Fast bail: no dialog in DOM → definitely not on Easy Apply
+    if (!document.querySelector('[role="dialog"]')) {
+      lastProcessedFields = null;
       return;
     }
 
+    const modal = findEasyApplyModal();
+    if (modal) {
+      processModal(modal);
+      attachCorrectionListeners(modal);
+    } else {
+      lastProcessedFields = null;
+    }
+  }
+
+  // Schedule a one-off scan — used by enable toggle, Next clicks, init.
+  function scanSoon(delay = 400) {
+    setTimeout(() => { scan(); }, delay);
+  }
+
+  // ── MutationObserver (debounced) ─────────────────────────────────────
+  const observer = new MutationObserver(() => {
+    if (!isContextValid()) { die(); return; }
     clearTimeout(_debounceTimer);
-    _debounceTimer = setTimeout(async () => {
-      const enabled = await isEnabled();
-      if (!enabled) return;
-
-      // Fast bail: no dialog in DOM → definitely not on Easy Apply
-      if (!document.querySelector('[role="dialog"]')) {
-        lastProcessedFields = null;
-        return;
-      }
-
-      const modal = findEasyApplyModal();
-      if (modal) {
-        processModal(modal);
-        attachCorrectionListeners(modal);
-      } else {
-        lastProcessedFields = null;
-      }
-    }, 300);
+    _debounceTimer = setTimeout(() => { scan(); }, 300);
   });
 
   function startObserver() {
-    if (_observerActive) return;
-    _observerActive = true;
-    observer.observe(document.body, { childList: true, subtree: true });
-    console.log('[NeuroApply] Active — watching for Easy Apply modals');
-
-    // Initial check — 400ms lets the page settle without blocking early clicks
-    setTimeout(async () => {
-      if (!isContextValid() || !(await isEnabled())) return;
-      const modal = findEasyApplyModal();
-      if (modal) {
-        processModal(modal);
-        attachCorrectionListeners(modal);
-      }
-    }, 400);
+    if (!_observerActive) {
+      _observerActive = true;
+      observer.observe(document.body, { childList: true, subtree: true });
+      console.log('[NeuroApply] Active — watching for Easy Apply modals');
+    }
+    // Always scan on (re)start — catches a modal that's already open.
+    scanSoon(400);
   }
 
   function stopObserver() {
@@ -433,15 +462,7 @@
     isProcessing = false;
     lastProcessedFields = null;
     invalidateEnabledCache();
-
-    setTimeout(async () => {
-      if (!(await isEnabled())) return;
-      const modal = findEasyApplyModal();
-      if (modal) {
-        processModal(modal);
-        attachCorrectionListeners(modal);
-      }
-    }, 900);
+    scanSoon(900); // let LinkedIn render the next step first
   }, true);
 
   // ── Manual fill trigger (from popup "Fill this page" button) ─────────
@@ -475,9 +496,11 @@
       if (area !== 'local' || !('neuroapplyEnabled' in changes)) return;
       invalidateEnabledCache();
       if (changes.neuroapplyEnabled.newValue !== false) {
-        startObserver();
+        lastProcessedFields = null; // force a fresh fill after enabling
+        startObserver();            // starts observer (if needed) + scans now
       } else {
         stopObserver();
+        ChatWidget.close();
       }
     });
   } catch { /* context already invalid at load time */ }
@@ -488,6 +511,22 @@
       showReloadBanner();
       return;
     }
+
+    // Heartbeat: (1) detect context invalidation even with no DOM mutations
+    // so the refresh banner always appears, and (2) detect LinkedIn's SPA
+    // navigation (pushState, no full reload) so the next job's modal gets
+    // handled without needing a manual refresh.
+    let _lastUrl = location.href;
+    _heartbeat = setInterval(() => {
+      if (!isContextValid()) { die(); return; }
+      if (location.href !== _lastUrl) {
+        _lastUrl = location.href;
+        isProcessing = false;
+        lastProcessedFields = null;
+        scanSoon(600);
+      }
+    }, 1500);
+
     if (!(await isEnabled())) return; // Disabled — do nothing, storage listener will activate later
     startObserver();
   })();
