@@ -27,21 +27,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // ── Auth check ──────────────────────────────────────────────────
+  // Optimistic: if a token exists, show the main view immediately to avoid a
+  // flash of the login form, then verify in the background and only revert
+  // to the login view if the token is actually rejected (401).
   const { authToken } = await chrome.storage.local.get('authToken');
   if (authToken) {
-    try {
-      const res = await fetch(`${API}/profile`, { headers: { 'Authorization': `Bearer ${authToken}` } });
-      if (res.ok) {
-        showMain();
-        updateStatus('connected');
-        loadResumeStatus(authToken);
-      } else {
-        await bg('LOGOUT');
-        showAuth();
-      }
-    } catch {
-      showAuth();
-    }
+    showMain();
+    updateStatus('connected');
+    loadResumeStatus(authToken);
+
+    fetch(`${API}/profile`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+      .then(async res => {
+        if (res.status === 401) {
+          await bg('LOGOUT');
+          showAuth();
+          updateStatus('disconnected');
+        }
+        // non-401 errors (backend down, 5xx): stay on main, keep the session
+      })
+      .catch(() => { /* backend unreachable — keep the optimistic main view */ });
   } else {
     showAuth();
   }
@@ -180,9 +184,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadResumeStatus(token) {
     try {
       const res = await fetch(`${API}/resume/status`, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) {
-        const d = await res.json();
-        if (d.status === 'completed') resumeStatus.innerHTML = `<p class="uploaded">✓ ${d.file_name}</p>`;
+      if (!res.ok) return;
+
+      // Endpoint returns a list of all resumes — pick the most recent.
+      const list = await res.json();
+      if (!Array.isArray(list) || list.length === 0) return;
+
+      const latest = list
+        .slice()
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+      if (latest.status === 'completed') {
+        resumeStatus.innerHTML = `<p class="uploaded">✓ ${latest.file_name}</p>`;
+      } else if (latest.status === 'processing') {
+        resumeStatus.innerHTML = `<p class="muted">Processing ${latest.file_name}…</p>`;
       }
     } catch { /* silent */ }
   }

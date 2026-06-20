@@ -512,11 +512,20 @@
       return;
     }
 
-    // Heartbeat: detect context invalidation even with no DOM mutations,
-    // so the "refresh" banner always appears instead of silent hanging.
+    // Heartbeat: (1) detect context invalidation even with no DOM mutations
+    // so the refresh banner always appears, and (2) detect LinkedIn's SPA
+    // navigation (pushState, no full reload) so the next job's modal gets
+    // handled without needing a manual refresh.
+    let _lastUrl = location.href;
     _heartbeat = setInterval(() => {
-      if (!isContextValid()) die();
-    }, 2000);
+      if (!isContextValid()) { die(); return; }
+      if (location.href !== _lastUrl) {
+        _lastUrl = location.href;
+        isProcessing = false;
+        lastProcessedFields = null;
+        scanSoon(600);
+      }
+    }, 1500);
 
     if (!(await isEnabled())) return; // Disabled — do nothing, storage listener will activate later
     startObserver();
