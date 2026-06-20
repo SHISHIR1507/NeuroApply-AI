@@ -7,6 +7,7 @@
   let lastProcessedFields = null;
   let _debounceTimer = null;
   let _observerActive = false;
+  let _heartbeat = null;
 
   // ── isEnabled cache ──────────────────────────────────────────────────
   // Avoids a chrome.storage.local.get() on every DOM mutation.
@@ -46,29 +47,54 @@
 
   // ── Reload banner ─────────────────────────────────────────────────────
   // Shown when extension is reloaded while tab stays open (context invalidated).
+  // A content script can never reconnect to a reloaded extension — the page
+  // MUST be refreshed. We make that obvious and one-click.
   function showReloadBanner() {
     if (document.querySelector('.neuroapply-reload-banner')) return;
     const banner = document.createElement('div');
     banner.className = 'neuroapply-reload-banner';
-    banner.innerHTML = '⚠ <strong>NeuroApply</strong> was updated — <u style="cursor:pointer">click here to reload the page</u> and re-enable autofill.';
+    banner.innerHTML =
+      '<span style="font-size:16px">🔄</span>' +
+      '<span><strong>NeuroApply needs a refresh</strong><br>' +
+      '<span style="opacity:.85;font-size:12px">The extension reloaded — click to refresh this tab and re-enable autofill.</span></span>';
     Object.assign(banner.style, {
       position: 'fixed',
-      bottom: '72px',
-      right: '16px',
-      background: '#1e1b4b',
-      color: '#e0e7ff',
-      padding: '12px 16px',
-      borderRadius: '10px',
-      fontSize: '13px',
-      lineHeight: '1.5',
+      top: '16px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+      color: '#fff',
+      padding: '14px 20px',
+      borderRadius: '12px',
+      fontSize: '13.5px',
+      lineHeight: '1.45',
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       zIndex: '2147483647',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-      border: '1px solid rgba(129,140,248,0.4)',
+      boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+      border: '1px solid rgba(255,255,255,0.2)',
       cursor: 'pointer',
-      maxWidth: '280px',
+      maxWidth: '420px',
     });
     banner.onclick = () => location.reload();
     document.body.appendChild(banner);
+  }
+
+  // ── Clean shutdown on context loss ───────────────────────────────────
+  // Once the extension context is invalidated there is nothing we can do but
+  // tell the user to refresh. Stop ALL activity so we never spam the console
+  // with chrome-extension://invalid/ errors.
+  let _dead = false;
+  function die() {
+    if (_dead) return;
+    _dead = true;
+    try { observer.disconnect(); } catch {}
+    _observerActive = false;
+    clearTimeout(_debounceTimer);
+    clearInterval(_heartbeat);
+    showReloadBanner();
   }
 
   // ── Chat Widget ──────────────────────────────────────────────────────
@@ -402,12 +428,7 @@
 
   // ── MutationObserver (debounced) ─────────────────────────────────────
   const observer = new MutationObserver(() => {
-    if (!isContextValid()) {
-      observer.disconnect();
-      _observerActive = false;
-      showReloadBanner();
-      return;
-    }
+    if (!isContextValid()) { die(); return; }
     clearTimeout(_debounceTimer);
     _debounceTimer = setTimeout(() => { scan(); }, 300);
   });
@@ -490,6 +511,13 @@
       showReloadBanner();
       return;
     }
+
+    // Heartbeat: detect context invalidation even with no DOM mutations,
+    // so the "refresh" banner always appears instead of silent hanging.
+    _heartbeat = setInterval(() => {
+      if (!isContextValid()) die();
+    }, 2000);
+
     if (!(await isEnabled())) return; // Disabled — do nothing, storage listener will activate later
     startObserver();
   })();
