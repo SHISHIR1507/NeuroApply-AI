@@ -20,8 +20,8 @@ export default function ResumePage() {
     }
     setUploading(true); setError(""); setSuccess("");
     try {
-      const result = await api.uploadResume(file);
-      setSuccess(`✓ Resume processed — ${result.chunks_embedded} ${result.chunks_embedded === 1 ? "chunk" : "chunks"} embedded`);
+      await api.uploadResume(file);
+      setSuccess("✓ Resume processed — your background is ready to power AI answers");
       setStatus(await api.getResumeStatus());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -82,22 +82,22 @@ export default function ResumePage() {
             </div>
           </div>
           <div style={statsGrid}>
-            <MiniStat value={String(status.chunks_embedded ?? 0)} label="Chunks embedded" />
-            <MiniStat value={String(status.fields_extracted ?? 0)} label="Fields extracted" />
+            <MiniStat value="Active" label="Status" />
+            <MiniStat value={String(status.fields_extracted ?? 0)} label="Details learned" />
             <MiniStat value={status.parsed_at ? new Date(status.parsed_at).toLocaleDateString() : "—"} label="Processed on" />
           </div>
-          <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>Re-upload to replace. Embeddings are used as a fallback when your structured profile doesn&rsquo;t cover a question.</p>
+          <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>Re-upload anytime to replace it. Your resume helps answer open-ended questions your profile doesn&rsquo;t cover.</p>
         </motion.div>
       )}
 
       {/* How it works */}
       <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16, duration: 0.5 }} style={infoBox}>
-        <h3 style={infoTitle}>How resume processing works</h3>
+        <h3 style={infoTitle}>What happens to your resume</h3>
         <ol style={steps}>
-          <li>Text is extracted from your PDF/DOCX</li>
-          <li>GPT-4o-mini parses it into structured data and auto-fills your profile</li>
-          <li>The text is split into chunks and embedded (text-embedding-3-small)</li>
-          <li>When a field can&rsquo;t be answered from your profile, we search these embeddings for the most relevant chunk</li>
+          <li>We read your PDF or DOCX securely</li>
+          <li>AI extracts your details and fills in your profile automatically</li>
+          <li>Your experience is remembered for open-ended application questions</li>
+          <li>When a form asks something not in your profile, NeuroApply answers it from your resume</li>
         </ol>
       </motion.div>
 

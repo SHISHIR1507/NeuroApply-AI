@@ -24,15 +24,25 @@ const STARTERS = [
 ];
 
 export default function OnboardingChat({ onFieldsSaved }: { onFieldsSaved?: (fields: Record<string, unknown>) => void }) {
-  const [messages, setMessages] = useState<Msg[]>([{ role: "bot", text: GREETING }]);
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [booting, setBooting] = useState(true);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const history = useRef<{ role: string; content: string }[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // The greeting "arrives" — typing indicator first, then it pops in.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setMessages([{ role: "bot", text: GREETING }]);
+      setBooting(false);
+    }, 750);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, [messages, booting]);
 
   async function send(text: string) {
     const msg = text.trim();
@@ -86,11 +96,16 @@ export default function OnboardingChat({ onFieldsSaved }: { onFieldsSaved?: (fie
     }
   }
 
-  const showStarters = messages.length <= 1 && !busy;
+  const showStarters = messages.length <= 1 && !busy && !booting;
 
   return (
     <div style={shell}>
       <div ref={scrollRef} style={feed}>
+        {booting && (
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <div style={botBubble}><Typing /></div>
+          </div>
+        )}
         <AnimatePresence initial={false}>
           {messages.map((m, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
