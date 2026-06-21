@@ -12,4 +12,4 @@
  *
  * Remember: also add the matching origin to manifest.json "host_permissions".
  */
-const NEUROAPPLY_API = 'http://localhost:8000/api/v1';
+const NEUROAPPLY_API = 'https://neuroapply-ai.onrender.com/api/v1';
