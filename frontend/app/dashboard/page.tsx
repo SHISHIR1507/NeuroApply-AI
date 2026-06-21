@@ -37,11 +37,12 @@ export default function DashboardPage() {
   }
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
+  const returning = typeof window !== "undefined" && localStorage.getItem("onboarded") === "1" && (stats?.total_applied ?? 0) > 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <h1 style={heading}>Welcome back, {firstName} 👋</h1>
+        <h1 style={heading}>{returning ? "Welcome back" : "Welcome"}, {firstName} 👋</h1>
         <p style={sub}>Your job-hunt command center</p>
       </motion.div>
 

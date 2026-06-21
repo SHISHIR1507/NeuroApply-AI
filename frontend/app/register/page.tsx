@@ -23,7 +23,7 @@ export default function RegisterPage() {
     try {
       const data = await api.register(email, password, name);
       localStorage.setItem("token", data.access_token);
-      router.push("/dashboard");
+      router.push("/welcome");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
