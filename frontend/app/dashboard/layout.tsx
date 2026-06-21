@@ -68,7 +68,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </button>
       </motion.aside>
 
-      <main style={main}>{children}</main>
+      <main style={main}><div style={contentWrap}>{children}</div></main>
     </div>
   );
 }
@@ -113,6 +113,9 @@ const logoutBtn: React.CSSProperties = {
   marginTop: "auto", transition: "all 0.18s",
 };
 const main: React.CSSProperties = {
-  marginLeft: 230, flex: 1, padding: "40px 40px 80px", maxWidth: 1000,
-  position: "relative", zIndex: 1,
+  marginLeft: 230, flex: 1, padding: "40px 48px 80px",
+  position: "relative", zIndex: 1, minWidth: 0,
+};
+const contentWrap: React.CSSProperties = {
+  maxWidth: 1280, margin: "0 auto", width: "100%",
 };
