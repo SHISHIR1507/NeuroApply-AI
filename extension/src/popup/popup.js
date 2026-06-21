@@ -3,7 +3,7 @@
  * Minimal launcher: toggle, profile page button, resume upload, sign out.
  */
 
-const API = 'http://localhost:8000/api/v1';
+const API = NEUROAPPLY_API;
 
 document.addEventListener('DOMContentLoaded', async () => {
   const authSection     = document.getElementById('authSection');

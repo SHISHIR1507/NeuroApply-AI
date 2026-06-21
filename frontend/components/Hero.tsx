@@ -253,7 +253,7 @@ export default function Hero() {
 function LinkedInFormMockup() {
   const fields = [
     { label: "Full Name", value: "Shishir Singh", filled: true },
-    { label: "Email", value: "shishir@proaibots.com", filled: true },
+    { label: "Email", value: "singhshishir4727@gmail.com", filled: true },
     { label: "Phone Number", value: "+91 98765 43210", filled: true },
     { label: "Years of Experience", value: "3", filled: true },
     { label: "Expected Salary (per annum)", value: "1200000", filled: true },

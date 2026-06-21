@@ -7,11 +7,15 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
+  <!-- Animated aurora backdrop -->
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
   <div class="popup-container">
     <!-- Header -->
     <header class="popup-header">
       <div class="popup-logo">
-        <span class="logo-icon">🧠</span>
+        <img class="logo-img" src="../../icons/icon48.png" alt="">
         <h1>NeuroApply AI</h1>
       </div>
       <div class="header-right">
@@ -102,6 +106,7 @@
     </section>
   </div>
 
+  <script src="../config.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

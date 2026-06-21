@@ -3,7 +3,7 @@
  * Guided Q&A onboarding + streaming free-form chat.
  */
 
-const API = 'http://localhost:8000/api/v1';
+const API = NEUROAPPLY_API;
 
 const AVATAR_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
   <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
@@ -71,7 +71,7 @@ function hideHero() {
   } catch {
     setConnected(false);
     addDivider('Cannot reach backend');
-    botMessage("I can't connect to the backend right now. Make sure it's running on localhost:8000.");
+    botMessage("I can't connect to the backend right now. Make sure the backend is running.");
   }
 })();
 
@@ -209,7 +209,7 @@ async function onboardingAnswer(text) {
 
   } catch {
     typing.remove();
-    botMessage("Can't reach the backend. Is it running on localhost:8000?");
+    botMessage("Can't reach the backend. Is the backend running?");
     enableInput();
   }
 }

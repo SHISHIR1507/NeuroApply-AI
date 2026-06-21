@@ -5,7 +5,7 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 
 const PIPELINE = [
   { label: "Full Name", source: "profile", value: "Shishir Singh", ms: 2 },
-  { label: "Email", source: "profile", value: "shishir@proaibots.com", ms: 3 },
+  { label: "Email", source: "profile", value: "singhshishir4727@gmail.com", ms: 3 },
   { label: "Years of Experience", source: "default_rule", value: "3", ms: 1 },
   { label: "Expected Salary", source: "profile", value: "1200000", ms: 4 },
   { label: "Notice Period (days)", source: "history", value: "30", ms: 6 },

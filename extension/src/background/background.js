@@ -6,7 +6,8 @@
 // ------------------------------------------------------------------
 // Configuration
 // ------------------------------------------------------------------
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+importScripts('../config.js'); // defines NEUROAPPLY_API
+const API_BASE_URL = NEUROAPPLY_API;
 let authToken = null;
 
 // ------------------------------------------------------------------
