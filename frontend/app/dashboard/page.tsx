@@ -83,11 +83,11 @@ export default function DashboardPage() {
             <span style={styles.cardIcon}>🔌</span>
             <span style={styles.cardTitle}>Chrome Extension</span>
           </div>
-          <p style={styles.cardStat} style2={styles.muted}>
+          <p style={{ ...styles.cardStat, ...styles.muted }}>
             Load the extension in Chrome, then open LinkedIn Easy Apply to start autofilling.
           </p>
           <p style={{ ...styles.cardStat, color: "#888", fontSize: "12px" }}>
-            Backend: localhost:8000
+            Connected to the NeuroApply cloud backend.
           </p>
         </div>
       </div>

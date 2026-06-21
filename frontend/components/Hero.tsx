@@ -1,9 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { AddToChromeBtn } from "./Navbar";
 
-const WORD_ANIM = {
+const WORD_ANIM: Variants = {
   hidden: { opacity: 0, y: 32, filter: "blur(4px)" },
   visible: (i: number) => ({
     opacity: 1, y: 0, filter: "blur(0px)",

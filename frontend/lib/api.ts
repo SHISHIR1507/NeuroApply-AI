@@ -1,4 +1,8 @@
-const BASE_URL = "http://localhost:8000/api/v1";
+// Configurable per environment. Set NEXT_PUBLIC_API_URL in Vercel to the
+// deployed backend origin (e.g. https://neuroapply-ai.onrender.com).
+const API_ORIGIN =
+  process.env.NEXT_PUBLIC_API_URL || "https://neuroapply-ai.onrender.com";
+const BASE_URL = `${API_ORIGIN}/api/v1`;
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("token") : null;
