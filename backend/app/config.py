@@ -40,7 +40,13 @@ class Settings(BaseSettings):
     openai_embed_model: str = "text-embedding-3-small"
 
     # --- CORS ---
-    cors_origins: List[str] = ["chrome-extension://localhost", "http://localhost:3000"]
+    # Published extension + Vercel marketing site + local dev.
+    # NOTE: on Render this is overridden by the CORS_ORIGINS env var — keep them in sync.
+    cors_origins: List[str] = [
+        "chrome-extension://nglhmaeijiphnabgdeeimepoophpffpd",
+        "https://neuro-apply-ai.vercel.app",
+        "http://localhost:3000",
+    ]
 
     # --- Embedding dimensions (text-embedding-3-small outputs 1536-dim) ---
     embedding_dimensions: int = 1536
