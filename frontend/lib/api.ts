@@ -76,6 +76,9 @@ export const api = {
       body: JSON.stringify({ message, history }),
     }),
 
+  getApplications: (limit = 8) => request<ApplicationItem[]>(`/applications?limit=${limit}`),
+  getApplicationStats: () => request<ApplicationStats>("/applications/stats"),
+
   getResumeStatus: () =>
     request<ResumeStatusItem[]>("/resume/status").then((list) => {
       const latest = list[0];
@@ -126,4 +129,21 @@ export interface ResumeStatus {
   parsed_at?: string;
   fields_extracted?: number;
   chunks_embedded?: number;
+}
+
+export interface ApplicationItem {
+  id: string;
+  company?: string;
+  job_title?: string;
+  platform: string;
+  job_url?: string;
+  fields_filled: number;
+  applied_at: string;
+}
+
+export interface ApplicationStats {
+  total_applied: number;
+  this_week: number;
+  time_saved_minutes: number;
+  fields_filled: number;
 }

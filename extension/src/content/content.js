@@ -9,6 +9,10 @@
   let _observerActive = false;
   let _heartbeat = null;
 
+  // Application tracking — accumulated across a multi-step Easy Apply flow.
+  let lastCompany = null;
+  let lastFilledTotal = 0;
+
   // ── isEnabled cache ──────────────────────────────────────────────────
   // Avoids a chrome.storage.local.get() on every DOM mutation.
   let _enabledCache = null;
@@ -239,6 +243,24 @@
     return label.length > 30 ? label.slice(0, 29) + '…' : label;
   }
 
+  // Pull the company name from the modal's "Apply to {Company}" heading.
+  function extractCompany(modal) {
+    for (const h of modal.querySelectorAll('h1, h2, h3')) {
+      const m = (h.textContent || '').trim().match(/^Apply to (.+)$/i);
+      if (m) return m[1].trim().slice(0, 200);
+    }
+    return null;
+  }
+
+  // Best-effort job title from the underlying job posting page.
+  function extractJobTitle() {
+    const el = document.querySelector(
+      '.job-details-jobs-unified-top-card__job-title, .jobs-unified-top-card__job-title, .t-24.job-details-jobs-unified-top-card__job-title, h1'
+    );
+    const t = el?.textContent?.trim();
+    return t ? t.slice(0, 200) : null;
+  }
+
   // Resolve fields via the service worker, but never hang forever.
   // MV3 service workers sleep; a dead/slow worker must not lock isProcessing.
   function resolveWithTimeout(payload, ms = 15000) {
@@ -314,6 +336,10 @@
 
         const result = window.Autofill.fillAll(modal, enrichedFields);
         console.log(`[NeuroApply] Filled: ${result.filled}, Unresolved: ${result.unresolved}`);
+
+        // Track for application logging (accumulates across multi-step flow)
+        lastCompany = extractCompany(modal) || lastCompany;
+        lastFilledTotal += result.filled;
 
         // Show per-field status (cap at 6 lines to keep widget compact)
         const lines = enrichedFields.slice(0, 6).map(f =>
@@ -455,6 +481,28 @@
     const btn = e.target.closest('button, [role="button"]');
     if (!btn) return;
     const text = (btn.textContent || btn.getAttribute('aria-label') || '').trim().toLowerCase();
+
+    // Submit → log the application, then reset the tracking counters.
+    const isSubmit = text === 'submit application' || text === 'submit';
+    if (isSubmit) {
+      try {
+        chrome.runtime.sendMessage({
+          type: 'LOG_APPLICATION',
+          payload: {
+            company: lastCompany,
+            job_title: extractJobTitle(),
+            job_url: window.location.href,
+            fields_filled: lastFilledTotal,
+            platform: 'linkedin',
+          },
+        });
+        console.log(`[NeuroApply] Logged application → ${lastCompany || 'unknown'}`);
+      } catch { /* context invalidated */ }
+      lastCompany = null;
+      lastFilledTotal = 0;
+      return;
+    }
+
     const isNavBtn = text === 'next' || text === 'continue' || text === 'review'
                   || text === 'next step' || text === 'review your application';
     if (!isNavBtn) return;
@@ -523,6 +571,8 @@
         _lastUrl = location.href;
         isProcessing = false;
         lastProcessedFields = null;
+        lastCompany = null;
+        lastFilledTotal = 0;
         scanSoon(600);
       }
     }, 1500);

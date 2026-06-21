@@ -140,3 +140,23 @@ class ResumeEmbedding(SQLModel, table=True):
     __table_args__ = (
         Index("ix_resume_embedding_user", "user_id"),
     )
+
+
+# ==================================================================
+# JobApplication — log of submitted applications (for dashboard stats)
+# ==================================================================
+class JobApplication(SQLModel, table=True):
+    __tablename__ = "job_applications"
+
+    id: uuid.UUID = Field(default_factory=_new_uuid, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user_profiles.id", index=True)
+    company: Optional[str] = Field(default=None, max_length=255)
+    job_title: Optional[str] = Field(default=None, max_length=255)
+    platform: str = Field(default="linkedin", max_length=50)
+    job_url: Optional[str] = Field(default=None, max_length=1000)
+    fields_filled: int = Field(default=0)
+    applied_at: datetime = Field(default_factory=_utcnow, index=True)
+
+    __table_args__ = (
+        Index("ix_job_app_user_time", "user_id", "applied_at"),
+    )

@@ -196,6 +196,26 @@ async function submitFeedback(payload) {
 }
 
 // ------------------------------------------------------------------
+// Application logging (on submit) — powers dashboard stats
+// ------------------------------------------------------------------
+async function logApplication(payload) {
+  const token = await getAuthToken();
+  if (!token) return { status: 'no_auth' };
+  // Fire-and-forget; don't block the user's submit flow.
+  apiRequest('/applications', {
+    method: 'POST',
+    body: JSON.stringify({
+      company: payload.company ?? null,
+      job_title: payload.job_title ?? null,
+      job_url: payload.job_url ?? null,
+      fields_filled: payload.fields_filled ?? 0,
+      platform: payload.platform ?? 'linkedin',
+    }),
+  });
+  return { status: 'logged' };
+}
+
+// ------------------------------------------------------------------
 // Utilities
 // ------------------------------------------------------------------
 function simpleHash(str) {
@@ -215,6 +235,7 @@ function simpleHash(str) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const handlers = {
     'RESOLVE_FIELDS': () => resolveFields(request.payload),
+    'LOG_APPLICATION': () => logApplication(request.payload),
     'SUBMIT_FEEDBACK': () => submitFeedback(request.payload),
     'LOGIN': () => handleLogin(request.payload),
     'LOGOUT': () => handleLogout(),
