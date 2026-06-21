@@ -65,6 +65,17 @@ export const api = {
     });
   },
 
+  // Raw SSE stream for the onboarding chat. Caller reads response.body.
+  chatStream: (message: string, history: { role: string; content: string }[]) =>
+    fetch(`${BASE_URL}/chat/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+      body: JSON.stringify({ message, history }),
+    }),
+
   getResumeStatus: () =>
     request<ResumeStatusItem[]>("/resume/status").then((list) => {
       const latest = list[0];
