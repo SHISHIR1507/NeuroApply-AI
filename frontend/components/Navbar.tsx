@@ -95,7 +95,7 @@ export default function Navbar() {
 export function AddToChromeBtn({ small = false }: { small?: boolean }) {
   return (
     <a
-      href="https://chrome.google.com/webstore"
+      href="https://chromewebstore.google.com/detail/nglhmaeijiphnabgdeeimepoophpffpd"
       target="_blank"
       rel="noopener noreferrer"
       style={{

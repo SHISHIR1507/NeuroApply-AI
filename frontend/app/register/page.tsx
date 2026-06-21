@@ -2,7 +2,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import { motion } from "framer-motion";
 import { api } from "@/lib/api";
+import Aurora from "@/components/Aurora";
+import { Field, AuthStyles } from "../login/page";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,112 +32,94 @@ export default function RegisterPage() {
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <div style={styles.logo}>🧠</div>
-        <h1 style={styles.title}>NeuroApply AI</h1>
-        <p style={styles.subtitle}>Create your account</p>
+    <main style={wrap}>
+      <Aurora />
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        style={card}
+      >
+        <div style={glowOrb} aria-hidden />
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.field}>
-            <label style={styles.label}>Full Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Shishir Singh"
-              required
-              style={styles.input}
-            />
-          </div>
-          <div style={styles.field}>
-            <label style={styles.label}>Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              style={styles.input}
-            />
-          </div>
-          <div style={styles.field}>
-            <label style={styles.label}>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={8}
-              style={styles.input}
-            />
-          </div>
+        <motion.div
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.1, duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
+          style={logoRing}
+        >
+          <Image src="/logo.png" alt="NeuroApply" width={48} height={48} style={{ borderRadius: 12 }} />
+        </motion.div>
 
-          {error && <p style={styles.error}>{error}</p>}
+        <h1 style={title}>Create your account</h1>
+        <p style={subtitle}>Start autofilling in three minutes</p>
 
-          <button type="submit" disabled={loading} style={styles.btn}>
-            {loading ? "Creating account..." : "Create Account"}
+        <form onSubmit={handleSubmit} style={form}>
+          <Field label="Full Name">
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="Shishir Singh" required className="na-input" />
+          </Field>
+          <Field label="Email">
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com" required className="na-input" />
+          </Field>
+          <Field label="Password">
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 8 characters" required minLength={8} className="na-input" />
+          </Field>
+
+          {error && (
+            <motion.p initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: [0, -6, 6, -4, 0] }}
+              transition={{ duration: 0.4 }} style={errStyle}>{error}</motion.p>
+          )}
+
+          <button type="submit" disabled={loading} className="na-btn">
+            {loading ? <span className="na-spin" /> : "Create Account"}
           </button>
         </form>
 
-        <p style={styles.footer}>
-          Already have an account?{" "}
-          <Link href="/login" style={styles.link}>
-            Sign in
-          </Link>
+        <p style={footer}>
+          Already have an account? <Link href="/login" style={link}>Sign in</Link>
         </p>
-      </div>
-    </div>
+      </motion.div>
+
+      <AuthStyles />
+    </main>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#0f0f0f",
-    padding: "20px",
-  },
-  card: {
-    background: "#1a1a1a",
-    border: "1px solid #2a2a2a",
-    borderRadius: "16px",
-    padding: "40px",
-    width: "100%",
-    maxWidth: "400px",
-    textAlign: "center",
-  },
-  logo: { fontSize: "40px", marginBottom: "12px" },
-  title: { color: "#e8e8e8", fontSize: "22px", fontWeight: 700, margin: "0 0 6px" },
-  subtitle: { color: "#888", fontSize: "14px", margin: "0 0 28px" },
-  form: { display: "flex", flexDirection: "column", gap: "16px", textAlign: "left" },
-  field: { display: "flex", flexDirection: "column", gap: "6px" },
-  label: { color: "#aaa", fontSize: "13px", fontWeight: 500 },
-  input: {
-    background: "#222",
-    border: "1px solid #333",
-    borderRadius: "8px",
-    color: "#e8e8e8",
-    fontSize: "14px",
-    padding: "10px 14px",
-    outline: "none",
-    width: "100%",
-  },
-  btn: {
-    background: "#6366f1",
-    color: "#fff",
-    borderRadius: "8px",
-    padding: "12px",
-    fontSize: "14px",
-    fontWeight: 600,
-    cursor: "pointer",
-    border: "none",
-    marginTop: "4px",
-  },
-  error: { color: "#ef4444", fontSize: "13px", margin: 0 },
-  footer: { color: "#888", fontSize: "13px", marginTop: "20px" },
-  link: { color: "#6366f1", textDecoration: "none" },
+const wrap: React.CSSProperties = {
+  minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+  padding: 24, position: "relative", overflow: "hidden",
 };
+const card: React.CSSProperties = {
+  position: "relative", zIndex: 1, width: "100%", maxWidth: 410, padding: "40px 36px",
+  background: "rgba(255,255,255,0.04)", backdropFilter: "blur(24px)",
+  border: "1px solid rgba(255,255,255,0.1)", borderRadius: 22,
+  boxShadow: "0 30px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)",
+  textAlign: "center", overflow: "hidden",
+};
+const glowOrb: React.CSSProperties = {
+  position: "absolute", top: -80, left: "50%", transform: "translateX(-50%)",
+  width: 260, height: 160, background: "radial-gradient(circle, rgba(139,92,246,0.4), transparent 70%)",
+  filter: "blur(30px)", pointerEvents: "none",
+};
+const logoRing: React.CSSProperties = {
+  width: 72, height: 72, margin: "0 auto 20px", borderRadius: 18,
+  display: "flex", alignItems: "center", justifyContent: "center",
+  background: "rgba(99,102,241,0.12)", border: "1px solid rgba(129,140,248,0.3)",
+  boxShadow: "0 0 30px rgba(99,102,241,0.4)", position: "relative", zIndex: 1,
+};
+const title: React.CSSProperties = {
+  fontSize: 26, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 6px",
+  background: "linear-gradient(135deg, #f1f5f9, #a78bfa)",
+  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+};
+const subtitle: React.CSSProperties = { color: "#64748b", fontSize: 14, margin: "0 0 28px" };
+const form: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 16 };
+const errStyle: React.CSSProperties = {
+  color: "#fca5a5", fontSize: 13, margin: 0, padding: "8px 12px",
+  background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 9,
+};
+const footer: React.CSSProperties = { color: "#64748b", fontSize: 13, marginTop: 22 };
+const link: React.CSSProperties = { color: "#a78bfa", textDecoration: "none", fontWeight: 600 };

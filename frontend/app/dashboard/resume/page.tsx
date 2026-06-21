@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { api, ResumeStatus } from "@/lib/api";
 
 export default function ResumePage() {
@@ -10,23 +11,18 @@ export default function ResumePage() {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    api.getResumeStatus().then(setStatus).catch(() => {});
-  }, []);
+  useEffect(() => { api.getResumeStatus().then(setStatus).catch(() => {}); }, []);
 
   async function upload(file: File) {
     if (!["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain"].includes(file.type) && !file.name.match(/\.(pdf|docx|txt)$/i)) {
       setError("Only PDF, DOCX, or TXT files are supported");
       return;
     }
-    setUploading(true);
-    setError("");
-    setSuccess("");
+    setUploading(true); setError(""); setSuccess("");
     try {
       const result = await api.uploadResume(file);
       setSuccess(`✓ Resume processed — ${result.chunks_embedded} ${result.chunks_embedded === 1 ? "chunk" : "chunks"} embedded`);
-      const updated = await api.getResumeStatus();
-      setStatus(updated);
+      setStatus(await api.getResumeStatus());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -38,146 +34,131 @@ export default function ResumePage() {
     const file = e.target.files?.[0];
     if (file) upload(file);
   }
-
   function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
+    e.preventDefault(); setDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) upload(file);
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <h1 style={styles.heading}>Resume</h1>
-        <p style={styles.sub}>Upload your resume to enable RAG-based autofill for open-ended questions</p>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <h1 style={heading}>Resume</h1>
+        <p style={sub}>Upload your resume to power AI answers for open-ended application questions</p>
+      </motion.div>
 
       {/* Upload zone */}
-      <div
-        style={{ ...styles.dropzone, ...(dragOver ? styles.dropzoneActive : {}) }}
+      <motion.div
+        initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, duration: 0.5 }}
+        style={{ ...dropzone, ...(dragOver ? dropzoneActive : {}) }}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
       >
         <input ref={inputRef} type="file" accept=".pdf,.docx,.txt" style={{ display: "none" }} onChange={handleFile} />
-        <span style={{ fontSize: "36px" }}>{uploading ? "⏳" : "📤"}</span>
-        <p style={styles.dropText}>
-          {uploading ? "Processing resume..." : "Drop your resume here or click to browse"}
-        </p>
-        <p style={styles.dropHint}>PDF, DOCX, or TXT — max 10MB</p>
-      </div>
-
-      {error && <p style={styles.error}>{error}</p>}
-      {success && <p style={styles.success}>{success}</p>}
-
-      {/* Current resume status */}
-      {status?.has_resume && (
-        <div style={styles.card}>
-          <div style={styles.cardHeader}>
-            <span style={{ fontSize: "20px" }}>📄</span>
-            <div>
-              <p style={styles.fileName}>{status.file_name}</p>
-              <span style={styles.badge}>✓ Processed</span>
-            </div>
-          </div>
-          <div style={styles.statsGrid}>
-            <div style={styles.stat}>
-              <span style={styles.statNum}>{status.chunks_embedded ?? 0}</span>
-              <span style={styles.statLabel}>Chunks embedded</span>
-            </div>
-            <div style={styles.stat}>
-              <span style={styles.statNum}>{status.fields_extracted ?? 0}</span>
-              <span style={styles.statLabel}>Fields extracted</span>
-            </div>
-            <div style={styles.stat}>
-              <span style={styles.statNum}>{status.parsed_at ? new Date(status.parsed_at).toLocaleDateString() : "—"}</span>
-              <span style={styles.statLabel}>Processed on</span>
-            </div>
-          </div>
-          <p style={styles.hint}>
-            Re-upload to replace. Embeddings are used as a fallback when structured profile data doesn't cover a question.
-          </p>
+        <div style={uploadIcon}>
+          {uploading ? <span className="na-spin" /> : (
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M17 8l-5-5-5 5" /><path d="M12 3v12" /></svg>
+          )}
         </div>
+        <p style={dropText}>{uploading ? "Processing your resume…" : "Drop your resume here, or click to browse"}</p>
+        <p style={dropHint}>PDF, DOCX, or TXT — max 10MB</p>
+      </motion.div>
+
+      {error && <p style={{ color: "#fca5a5", fontSize: 13, margin: 0 }}>{error}</p>}
+      {success && <p style={{ color: "#4ade80", fontSize: 13, margin: 0 }}>{success}</p>}
+
+      {/* Current resume */}
+      {status?.has_resume && (
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12, duration: 0.5 }} style={card}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <span style={fileIcon}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
+            </span>
+            <div>
+              <p style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15, margin: "0 0 6px" }}>{status.file_name}</p>
+              <span style={badge}>✓ Processed</span>
+            </div>
+          </div>
+          <div style={statsGrid}>
+            <MiniStat value={String(status.chunks_embedded ?? 0)} label="Chunks embedded" />
+            <MiniStat value={String(status.fields_extracted ?? 0)} label="Fields extracted" />
+            <MiniStat value={status.parsed_at ? new Date(status.parsed_at).toLocaleDateString() : "—"} label="Processed on" />
+          </div>
+          <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>Re-upload to replace. Embeddings are used as a fallback when your structured profile doesn&rsquo;t cover a question.</p>
+        </motion.div>
       )}
 
       {/* How it works */}
-      <div style={styles.infoBox}>
-        <h3 style={styles.infoTitle}>How resume processing works</h3>
-        <ol style={styles.steps}>
+      <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16, duration: 0.5 }} style={infoBox}>
+        <h3 style={infoTitle}>How resume processing works</h3>
+        <ol style={steps}>
           <li>Text is extracted from your PDF/DOCX</li>
-          <li>OpenAI (gpt-4o-mini) parses it into structured data and auto-fills your profile</li>
-          <li>The text is split into chunks and embedded using text-embedding-3-small</li>
-          <li>When a form field can't be answered from your profile, we search these embeddings and return the most relevant chunk</li>
+          <li>GPT-4o-mini parses it into structured data and auto-fills your profile</li>
+          <li>The text is split into chunks and embedded (text-embedding-3-small)</li>
+          <li>When a field can&rsquo;t be answered from your profile, we search these embeddings for the most relevant chunk</li>
         </ol>
-      </div>
+      </motion.div>
+
+      <style>{`
+        .na-spin { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(129,140,248,0.3); border-top-color: #a78bfa; animation: na-rot .7s linear infinite; }
+        @keyframes na-rot { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  page: { display: "flex", flexDirection: "column", gap: "20px" },
-  header: { marginBottom: "8px" },
-  heading: { color: "#e8e8e8", fontSize: "26px", fontWeight: 700, margin: "0 0 6px" },
-  sub: { color: "#888", fontSize: "14px", margin: 0 },
-  dropzone: {
-    border: "2px dashed #2a2a2a",
-    borderRadius: "12px",
-    padding: "48px 24px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "8px",
-    cursor: "pointer",
-    transition: "border-color 0.15s, background 0.15s",
-    background: "#1a1a1a",
-  },
-  dropzoneActive: {
-    borderColor: "#6366f1",
-    background: "#6366f110",
-  },
-  dropText: { color: "#e8e8e8", fontSize: "15px", fontWeight: 500, margin: 0 },
-  dropHint: { color: "#888", fontSize: "13px", margin: 0 },
-  error: { color: "#ef4444", fontSize: "13px", margin: 0 },
-  success: { color: "#22c55e", fontSize: "13px", margin: 0 },
-  card: {
-    background: "#1a1a1a",
-    border: "1px solid #2a2a2a",
-    borderRadius: "12px",
-    padding: "24px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "16px",
-  },
-  cardHeader: { display: "flex", alignItems: "center", gap: "14px" },
-  fileName: { color: "#e8e8e8", fontWeight: 600, fontSize: "15px", margin: "0 0 6px" },
-  badge: {
-    background: "#22c55e20",
-    color: "#22c55e",
-    padding: "3px 10px",
-    borderRadius: "999px",
-    fontSize: "12px",
-    fontWeight: 600,
-  },
-  statsGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" },
-  stat: {
-    background: "#222",
-    borderRadius: "8px",
-    padding: "14px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-  },
-  statNum: { color: "#e8e8e8", fontSize: "22px", fontWeight: 700 },
-  statLabel: { color: "#888", fontSize: "12px" },
-  hint: { color: "#666", fontSize: "12px", margin: 0 },
-  infoBox: {
-    background: "#1a1a1a",
-    border: "1px solid #2a2a2a",
-    borderRadius: "12px",
-    padding: "24px",
-  },
-  infoTitle: { color: "#aaa", fontSize: "13px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 12px" },
-  steps: { color: "#888", fontSize: "13px", lineHeight: "1.8", paddingLeft: "20px", margin: 0 },
+function MiniStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div style={miniStat}>
+      <span style={miniNum}>{value}</span>
+      <span style={miniLabel}>{label}</span>
+    </div>
+  );
+}
+
+const heading: React.CSSProperties = { color: "#f1f5f9", fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em", margin: 0 };
+const sub: React.CSSProperties = { color: "#64748b", fontSize: 14, margin: "6px 0 0" };
+const dropzone: React.CSSProperties = {
+  border: "1.5px dashed rgba(255,255,255,0.14)", borderRadius: 18, padding: "44px 24px",
+  display: "flex", flexDirection: "column", alignItems: "center", gap: 12, cursor: "pointer",
+  background: "rgba(255,255,255,0.025)", backdropFilter: "blur(12px)",
+  transition: "border-color .2s, background .2s, box-shadow .2s",
 };
+const dropzoneActive: React.CSSProperties = {
+  borderColor: "rgba(129,140,248,0.7)", background: "rgba(99,102,241,0.07)",
+  boxShadow: "0 0 0 3px rgba(129,140,248,0.14)",
+};
+const uploadIcon: React.CSSProperties = {
+  width: 56, height: 56, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center",
+  background: "rgba(99,102,241,0.12)", border: "1px solid rgba(129,140,248,0.28)",
+};
+const dropText: React.CSSProperties = { color: "#e2e8f0", fontSize: 15, fontWeight: 500, margin: 0 };
+const dropHint: React.CSSProperties = { color: "#64748b", fontSize: 13, margin: 0 };
+const card: React.CSSProperties = {
+  background: "rgba(255,255,255,0.03)", backdropFilter: "blur(18px)",
+  border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: 24,
+  display: "flex", flexDirection: "column", gap: 16,
+};
+const fileIcon: React.CSSProperties = {
+  width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
+  background: "rgba(99,102,241,0.14)", border: "1px solid rgba(129,140,248,0.3)",
+};
+const badge: React.CSSProperties = {
+  background: "rgba(74,222,128,0.12)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.3)",
+  padding: "3px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600,
+};
+const statsGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 };
+const miniStat: React.CSSProperties = {
+  background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 14,
+  display: "flex", flexDirection: "column", gap: 4, border: "1px solid rgba(255,255,255,0.06)",
+};
+const miniNum: React.CSSProperties = { color: "#f1f5f9", fontSize: 20, fontWeight: 700 };
+const miniLabel: React.CSSProperties = { color: "#64748b", fontSize: 12 };
+const infoBox: React.CSSProperties = {
+  background: "rgba(255,255,255,0.03)", backdropFilter: "blur(18px)",
+  border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: 24,
+};
+const infoTitle: React.CSSProperties = { color: "#94a3b8", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" };
+const steps: React.CSSProperties = { color: "#94a3b8", fontSize: 13, lineHeight: 1.9, paddingLeft: 20, margin: 0 };
