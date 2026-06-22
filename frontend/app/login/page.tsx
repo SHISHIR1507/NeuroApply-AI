@@ -69,7 +69,7 @@ export default function LoginPage() {
 }
 
 /* ─────────── Left: a person drowning in manual forms ─────────── */
-function ManualScene() {
+export function ManualScene() {
   return (
     <motion.div className="na-side-scene" initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25, duration: 0.7 }} style={scene}>
       <span style={label("#fb7185")}>Without NeuroApply</span>
@@ -96,7 +96,7 @@ function ManualScene() {
 }
 
 /* ─────────── Right: a person relaxing while it's handled ─────────── */
-function AutoScene() {
+export function AutoScene() {
   return (
     <motion.div className="na-side-scene" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25, duration: 0.7 }} style={scene}>
       <span style={label("#a5b4fc")}>With NeuroApply</span>

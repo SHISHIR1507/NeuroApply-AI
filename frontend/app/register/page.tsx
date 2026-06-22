@@ -6,7 +6,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import Aurora from "@/components/Aurora";
-import { Field, AuthStyles } from "../login/page";
+import { Field, AuthStyles, ManualScene, AutoScene } from "../login/page";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -34,7 +34,9 @@ export default function RegisterPage() {
   return (
     <main style={wrap}>
       <Aurora />
-      <motion.div
+      <div style={grid}>
+        <ManualScene />
+        <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
@@ -81,9 +83,12 @@ export default function RegisterPage() {
         <p style={footer}>
           Already have an account? <Link href="/login" style={link}>Sign in</Link>
         </p>
-      </motion.div>
+        </motion.div>
+        <AutoScene />
+      </div>
 
       <AuthStyles />
+      <style>{`@media (max-width: 1080px){ .na-side-scene { display:none !important; } }`}</style>
     </main>
   );
 }
@@ -92,11 +97,15 @@ const wrap: React.CSSProperties = {
   minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
   padding: 24, position: "relative", overflow: "hidden",
 };
+const grid: React.CSSProperties = {
+  position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "1fr 420px 1fr",
+  gap: 24, alignItems: "center", maxWidth: 1200, width: "100%",
+};
 const card: React.CSSProperties = {
-  position: "relative", zIndex: 1, width: "100%", maxWidth: 410, padding: "40px 36px",
-  background: "rgba(255,255,255,0.04)", backdropFilter: "blur(24px)",
-  border: "1px solid rgba(255,255,255,0.1)", borderRadius: 22,
-  boxShadow: "0 30px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)",
+  position: "relative", zIndex: 3, width: "100%", padding: "44px 38px",
+  background: "rgba(17,20,38,0.72)", backdropFilter: "blur(28px)",
+  border: "1px solid rgba(129,140,248,0.25)", borderRadius: 24,
+  boxShadow: "0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04), 0 0 60px rgba(99,102,241,0.25)",
   textAlign: "center", overflow: "hidden",
 };
 const glowOrb: React.CSSProperties = {
