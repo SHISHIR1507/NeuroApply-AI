@@ -79,6 +79,15 @@ export const api = {
   getApplications: (limit = 8) => request<ApplicationItem[]>(`/applications?limit=${limit}`),
   getApplicationStats: () => request<ApplicationStats>("/applications/stats"),
 
+  getAnswers: () => request<AnswerItem[]>("/answers"),
+  updateAnswer: (id: string, answer_value: string) =>
+    request<AnswerItem>(`/answers/${id}`, { method: "PUT", body: JSON.stringify({ answer_value }) }),
+  deleteAnswer: (id: string) =>
+    fetch(`${BASE_URL}/answers/${id}`, {
+      method: "DELETE",
+      headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
+    }).then((r) => { if (!r.ok && r.status !== 204) throw new Error("Delete failed"); }),
+
   getResumeStatus: () =>
     request<ResumeStatusItem[]>("/resume/status").then((list) => {
       const latest = list[0];
@@ -146,4 +155,14 @@ export interface ApplicationStats {
   this_week: number;
   time_saved_minutes: number;
   fields_filled: number;
+}
+
+export interface AnswerItem {
+  id: string;
+  question_text: string;
+  answer_value: string;
+  canonical_key?: string | null;
+  platform: string;
+  times_used: number;
+  updated_at: string;
 }

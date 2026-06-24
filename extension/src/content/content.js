@@ -40,6 +40,27 @@
     }
   }
 
+  // Auto-advance setting (click Next automatically — never Submit). Off by default.
+  async function isAutoAdvance() {
+    if (!isContextValid()) return false;
+    try {
+      const { neuroapplyAutoAdvance } = await chrome.storage.local.get('neuroapplyAutoAdvance');
+      return neuroapplyAutoAdvance === true;
+    } catch { return false; }
+  }
+
+  // Find a "Next/Continue/Review" button inside the modal — never a Submit button.
+  function findNextButton(modal) {
+    for (const b of modal.querySelectorAll('button, [role="button"]')) {
+      const t = (b.textContent || b.getAttribute('aria-label') || '').trim().toLowerCase();
+      if (t.includes('submit')) continue; // never auto-submit
+      if (t === 'next' || t === 'continue' || t === 'review' || t === 'next step' || t === 'review your application') {
+        if (!b.disabled) return b;
+      }
+    }
+    return null;
+  }
+
   // ── Context validity ─────────────────────────────────────────────────
   function isContextValid() {
     try {
@@ -359,6 +380,17 @@
           : `Filled <b>${result.filled}/${total}</b> · <span class="na-warn">${result.unresolved} need your input</span>`;
         ChatWidget.say(doneHtml, 350);
         ChatWidget.scheduleClose(10000);
+
+        // Auto-advance to the next step (never auto-submit), if the user opted in
+        // and every required field on this step was resolved.
+        if (result.unresolved === 0 && await isAutoAdvance()) {
+          const nextBtn = findNextButton(modal);
+          if (nextBtn) {
+            ChatWidget.say('Auto-advancing to the next step… ➡️', 700);
+            const delay = 1000 + Math.random() * 800; // human-like pacing
+            setTimeout(() => { if (isContextValid()) nextBtn.click(); }, delay);
+          }
+        }
       } else {
         console.warn('[NeuroApply] Unexpected response:', response);
         ChatWidget.say('Got an unexpected response. Check console.');

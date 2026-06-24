@@ -26,6 +26,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.storage.local.set({ neuroapplyEnabled: enableToggle.checked });
   });
 
+  // ── Auto-advance toggle ─────────────────────────────────────────
+  const autoAdvanceToggle = document.getElementById('autoAdvanceToggle');
+  if (autoAdvanceToggle) {
+    const { neuroapplyAutoAdvance } = await chrome.storage.local.get('neuroapplyAutoAdvance');
+    autoAdvanceToggle.checked = neuroapplyAutoAdvance === true;
+    autoAdvanceToggle.addEventListener('change', () => {
+      chrome.storage.local.set({ neuroapplyAutoAdvance: autoAdvanceToggle.checked });
+    });
+  }
+
   // ── Auth check ──────────────────────────────────────────────────
   // Optimistic: if a token exists, show the main view immediately to avoid a
   // flash of the login form, then verify in the background and only revert
