@@ -52,8 +52,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           await bg('LOGOUT');
           showAuth();
           updateStatus('disconnected');
+          return;
         }
-        // non-401 errors (backend down, 5xx): stay on main, keep the session
+        if (res.ok) {
+          try { setAccount(await res.json()); } catch { /* ignore */ }
+        }
       })
       .catch(() => { /* backend unreachable — keep the optimistic main view */ });
   } else {
@@ -125,6 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (result?.status === 'logged_in') {
       const { authToken: tok } = await chrome.storage.local.get('authToken');
       showMain(); updateStatus('connected');
+      setAccount({ email: document.getElementById('loginEmail').value });
       loadResumeStatus(tok);
     } else {
       showError(result?.message || 'Login failed');
@@ -223,6 +227,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function showAuth() { authSection.classList.remove('hidden'); mainSection.classList.add('hidden'); }
   function showMain() { authSection.classList.add('hidden'); mainSection.classList.remove('hidden'); }
+  function setAccount(profile) {
+    const email = profile?.email;
+    if (!email) return;
+    const emailEl = document.getElementById('accountEmail');
+    const avatarEl = document.getElementById('accountAvatar');
+    if (emailEl) emailEl.textContent = email;
+    if (avatarEl) avatarEl.textContent = email.charAt(0).toUpperCase();
+  }
   function showError(msg) { authError.textContent = msg; authError.classList.remove('hidden'); }
   function updateStatus(s) {
     statusIndicator.className = `status-indicator status-${s}`;
