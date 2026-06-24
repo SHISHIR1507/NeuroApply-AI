@@ -56,7 +56,7 @@ export default function OnboardingChat({ onFieldsSaved }: { onFieldsSaved?: (fie
     setMessages((m) => [...m, { role: "bot", text: "" }]);
 
     try {
-      const res = await api.chatStream(msg, history.current.slice(-8));
+      const res = await api.chatStream(msg, history.current.slice(-8), true);
       if (!res.ok || !res.body) throw new Error("stream failed");
 
       const reader = res.body.getReader();

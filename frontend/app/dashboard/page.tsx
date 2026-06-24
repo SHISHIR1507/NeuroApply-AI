@@ -1,10 +1,22 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { api, Profile, ResumeStatus, ApplicationStats, ApplicationItem } from "@/lib/api";
 
+const QUOTES = [
+  "Every application is a step closer to your next chapter.",
+  "The job you want is one click away from the form you hate filling.",
+  "Consistency beats intensity — apply a little every day.",
+  "You miss 100% of the jobs you don't apply to.",
+  "Let the robots do the typing. You focus on landing the role.",
+  "Opportunities don't happen. You create them — faster now.",
+  "Your dream job is out there. Let's go get it.",
+  "Small daily applications compound into big career leaps.",
+];
+
 export default function DashboardPage() {
+  const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], []);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [resume, setResume] = useState<ResumeStatus | null>(null);
   const [stats, setStats] = useState<ApplicationStats | null>(null);
@@ -43,7 +55,7 @@ export default function DashboardPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <h1 style={heading}>{returning ? "Welcome back" : "Welcome"}, {firstName} 👋</h1>
-        <p style={sub}>Your job-hunt command center</p>
+        <p style={sub}>“{quote}”</p>
       </motion.div>
 
       {/* Stat strip */}
@@ -69,7 +81,7 @@ export default function DashboardPage() {
           <Panel delay={0.34} title="Setup status">
             <SetupRow done={pct === 100} label="Complete your profile" detail={`${filled}/${profileFields.length} fields`} />
             <SetupRow done={!!resume?.has_resume} label="Upload your resume" detail={resume?.has_resume ? "Active" : "Not yet"} />
-            <SetupRow done label="Backend connected" detail="Cloud" />
+            <SetupRow done={(stats?.total_applied ?? 0) > 0} label="Apply to your first job" detail={(stats?.total_applied ?? 0) > 0 ? "Done" : "Not yet"} />
           </Panel>
         </div>
 

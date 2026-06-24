@@ -340,6 +340,23 @@ If they ask to see their profile, format it as a clean multi-line summary using 
 **Relocation:** Yes/No  **Sponsorship:** Yes/No
 Keep each line short. Never put everything on one line."""
 
+_ONBOARDING_SYSTEM = """You are NeuroApply's onboarding assistant. Your job is to set up the user's job-application profile through a quick, friendly conversation — ONE question at a time.
+
+After each user message: warmly confirm what you captured in a few words, then ask for the NEXT most important detail still missing. Walk through these, skipping anything already in their profile:
+1. Current role/title and company
+2. Years of experience
+3. Location (and whether they're open to relocating)
+4. Expected salary
+5. Notice period
+6. Work authorization / citizenship
+7. A few key skills
+8. LinkedIn URL
+
+Rules:
+- Ask only ONE thing at a time. Keep replies to 1–2 short, encouraging sentences.
+- Never dump a list of questions. Never output JSON.
+- When all the essentials are collected, congratulate them warmly and tell them they're all set and can head to their dashboard."""
+
 _EXTRACT_UPDATES_SYSTEM = """Extract any profile updates from this exchange. Return ONLY a JSON object.
 Updatable fields: full_name, phone, location, years_of_experience (int), current_title, current_company,
 current_salary, expected_salary, notice_period, willing_to_relocate (bool), requires_sponsorship (bool),
@@ -375,7 +392,7 @@ async def stream_free_chat(
             if v is not None and k not in ("hashed_password", "id", "created_at", "updated_at")
         }
 
-    system = _REPLY_ONLY_SYSTEM
+    system = _ONBOARDING_SYSTEM if request.onboarding else _REPLY_ONLY_SYSTEM
     if profile_context:
         system += f"\n\nUser's current profile:\n{json.dumps(profile_context, default=str, indent=2)}"
 

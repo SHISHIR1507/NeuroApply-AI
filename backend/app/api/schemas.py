@@ -181,6 +181,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: Optional[List[ChatMessage]] = None
+    onboarding: bool = False
 
 
 class ChatResponse(BaseModel):

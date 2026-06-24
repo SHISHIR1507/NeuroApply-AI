@@ -77,9 +77,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 3000);
   });
 
-  // ── Open full-page profile chat ─────────────────────────────────
+  // ── Open the web app (dashboard + AI profile chat) ──────────────
+  const WEB_APP = 'https://neuro-apply-ai.vercel.app';
+  const dashboardBtn = document.getElementById('dashboardBtn');
+  dashboardBtn?.addEventListener('click', () => {
+    chrome.tabs.create({ url: `${WEB_APP}/dashboard` });
+  });
   openProfileBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('src/pages/profile.html') });
+    chrome.tabs.create({ url: `${WEB_APP}/dashboard/profile` });
   });
 
   // ── Auth form toggles ───────────────────────────────────────────

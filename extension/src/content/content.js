@@ -483,7 +483,7 @@
     const text = (btn.textContent || btn.getAttribute('aria-label') || '').trim().toLowerCase();
 
     // Submit → log the application, then reset the tracking counters.
-    const isSubmit = text === 'submit application' || text === 'submit';
+    const isSubmit = text.includes('submit application') || text === 'submit';
     if (isSubmit) {
       try {
         chrome.runtime.sendMessage({
