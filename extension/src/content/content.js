@@ -291,6 +291,14 @@
     ]);
   }
 
+  // A stable key for the job currently being applied to. Tying the dedup
+  // signature to this prevents a different company's modal from being falsely
+  // skipped just because it asks the same questions (Email, Phone, etc.).
+  function currentJobKey() {
+    const m = location.href.match(/currentJobId=(\d+)/) || location.pathname.match(/\/jobs\/view\/(\d+)/);
+    return m ? m[1] : location.pathname;
+  }
+
   async function processModal(modal) {
     if (isProcessing) return;
 
@@ -305,7 +313,9 @@
     }
     if (!fields.length) return;
 
-    const fieldSignature = fields.map(f => f.label).join('|');
+    // Signature is per-job + per-field-set, so the same questions on a
+    // different job are treated as new work (not a duplicate to skip).
+    const fieldSignature = currentJobKey() + '::' + fields.map(f => f.label).join('|');
     if (fieldSignature === lastProcessedFields) return; // already handled — stay silent
 
     // ── Commit. Mark processed up-front so rapid re-entry bails above. ──
@@ -544,6 +554,18 @@
     invalidateEnabledCache();
     scanSoon(900); // let LinkedIn render the next step first
   }, true);
+
+  // ── Back / forward navigation ────────────────────────────────────────
+  // The browser back/forward buttons fire popstate. Reset state immediately
+  // (don't wait for the 1.5s heartbeat) so the next job's modal is handled.
+  window.addEventListener('popstate', () => {
+    if (!isContextValid()) return;
+    isProcessing = false;
+    lastProcessedFields = null;
+    lastCompany = null;
+    lastFilledTotal = 0;
+    scanSoon(700);
+  });
 
   // ── Manual fill trigger (from popup "Fill this page" button) ─────────
   try {
