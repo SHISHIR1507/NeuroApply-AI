@@ -68,7 +68,7 @@ export default function ProfilePage() {
                 <SparkIcon /> Update with assistant
               </button>
             </div>
-            <Summary profile={profile} />
+            <Summary profile={profile} onChange={setProfile} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -146,8 +146,25 @@ function CapturedPanel({ profile, filledCount, onDone }: { profile: Profile; fil
   );
 }
 
-function Summary({ profile }: { profile: Profile }) {
+function Summary({ profile, onChange }: { profile: Profile; onChange: (p: Profile) => void }) {
   const skills = profile.skills ?? [];
+  const [editingSkills, setEditingSkills] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function saveSkills() {
+    const list = draft.split(",").map((s) => s.trim()).filter(Boolean);
+    // de-dupe (case-insensitive), preserve order
+    const seen = new Set<string>();
+    const deduped = list.filter((s) => { const k = s.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+    setSaving(true);
+    try {
+      const updated = await api.updateProfile({ skills: deduped });
+      onChange(updated);
+      setEditingSkills(false);
+    } catch { /* keep editing */ } finally { setSaving(false); }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 24 }}>
       {GROUPS.map((g, gi) => (
@@ -171,12 +188,37 @@ function Summary({ profile }: { profile: Profile }) {
       ))}
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24, duration: 0.45 }} style={summaryCard}>
-        <h3 style={summaryTitle}>Skills</h3>
-        {skills.length ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <h3 style={{ ...summaryTitle, margin: 0 }}>Skills</h3>
+          {!editingSkills && (
+            <button onClick={() => { setDraft(skills.join(", ")); setEditingSkills(true); }} style={editLink}>
+              {skills.length ? "Edit" : "Add"}
+            </button>
+          )}
+        </div>
+
+        {editingSkills ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") saveSkills(); if (e.key === "Escape") setEditingSkills(false); }}
+              placeholder="Python, JavaScript, PostgreSQL, React…" className="na-skills-input" />
+            <p style={{ color: "#64748b", fontSize: 12, margin: 0 }}>Separate skills with commas.</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={saveSkills} disabled={saving} className="na-cta" style={{ padding: "9px 18px", fontSize: 13 }}>{saving ? "Saving…" : "Save skills"}</button>
+              <button onClick={() => setEditingSkills(false)} className="na-ghost" style={{ padding: "9px 16px", fontSize: 13 }}>Cancel</button>
+            </div>
+          </div>
+        ) : skills.length ? (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {skills.map((s) => <span key={s} style={skillTag}>{s}</span>)}
           </div>
-        ) : <span style={{ color: "#475569", fontSize: 14 }}>None added yet — ask the assistant to add your skills.</span>}
+        ) : <span style={{ color: "#475569", fontSize: 14 }}>None added yet — click Add, or ask the assistant.</span>}
+
+        <style>{`
+          .na-skills-input { width:100%; padding:11px 13px; font-size:14px; background:rgba(255,255,255,0.05);
+            border:1px solid rgba(129,140,248,0.5); border-radius:10px; color:#f1f5f9; outline:none;
+            box-shadow:0 0 0 3px rgba(129,140,248,0.16); }
+        `}</style>
       </motion.div>
     </div>
   );
@@ -228,6 +270,7 @@ const summaryCard: React.CSSProperties = {
 };
 const summaryTitle: React.CSSProperties = { color: "#94a3b8", fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 16px" };
 const summaryGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 };
+const editLink: React.CSSProperties = { background: "rgba(99,102,241,0.12)", border: "1px solid rgba(129,140,248,0.3)", color: "#a5b4fc", fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: 9, cursor: "pointer" };
 const skillTag: React.CSSProperties = {
   background: "rgba(99,102,241,0.14)", color: "#c7d2fe", border: "1px solid rgba(129,140,248,0.3)",
   padding: "5px 12px", borderRadius: 999, fontSize: 13, fontWeight: 500,

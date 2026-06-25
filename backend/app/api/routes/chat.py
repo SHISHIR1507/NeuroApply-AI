@@ -443,6 +443,16 @@ async def stream_free_chat(
             if updates and profile:
                 for key, value in updates.items():
                     if key in _PROFILE_FIELDS_ALLOWED and value is not None:
+                        # Skills accumulate (comma-style) instead of replacing —
+                        # adding "JavaScript" must not wipe out "Python".
+                        if key == "skills" and isinstance(value, list):
+                            existing = list(profile.skills or [])
+                            lowered = {s.lower() for s in existing}
+                            for s in value:
+                                if s and s.lower() not in lowered:
+                                    existing.append(s)
+                                    lowered.add(s.lower())
+                            value = existing
                         setattr(profile, key, value)
                         applied[key] = value
                 if applied:
