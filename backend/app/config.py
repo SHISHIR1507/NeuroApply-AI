@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     openai_llm_model: str = "gpt-4o-mini"
     openai_embed_model: str = "text-embedding-3-small"
 
+    # --- Support / email (Resend) ---
+    resend_api_key: str = ""
+    resend_from: str = "NeuroApply <onboarding@resend.dev>"
+    support_email: str = "singhshishir4727@gmail.com"
+
     # --- CORS ---
     # Published extension + Vercel marketing site + local dev.
     # NOTE: on Render this is overridden by the CORS_ORIGINS env var — keep them in sync.

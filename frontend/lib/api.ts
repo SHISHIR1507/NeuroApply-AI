@@ -79,6 +79,19 @@ export const api = {
   getApplications: (limit = 8) => request<ApplicationItem[]>(`/applications?limit=${limit}`),
   getApplicationStats: () => request<ApplicationStats>("/applications/stats"),
 
+  raiseIssue: (payload: { name?: string; email?: string; category?: string; message: string }) =>
+    fetch(`${BASE_URL}/support/issue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then(async (r) => {
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({ detail: "Failed" }));
+        throw new Error(e.detail || "Failed to send");
+      }
+      return r.json();
+    }),
+
   getAnswers: () => request<AnswerItem[]>("/answers"),
   updateAnswer: (id: string, answer_value: string) =>
     request<AnswerItem>(`/answers/${id}`, { method: "PUT", body: JSON.stringify({ answer_value }) }),

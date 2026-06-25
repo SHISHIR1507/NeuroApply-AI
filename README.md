@@ -21,10 +21,14 @@ NeuroApply AI is a full-stack job application assistant that eliminates the repe
 - Detects LinkedIn Easy Apply modals automatically via a debounced MutationObserver
 - Fills text fields, dropdowns, number inputs, radio buttons, and checkboxes
 - Converts salary formats intelligently (e.g. `6 LPA` → `600000`)
-- Learns from your manual corrections and reuses them in future applications
+- Learns from your manual corrections and reuses them — manageable in an **Answer Library**
 - Resolves most fields from cache in under 1ms on repeat visits
-- Provides a **"Fill this page"** button in the popup for instant manual triggering
-- Guided conversational onboarding with streaming chat to build your profile
+- **ATS Score** — scores your resume against the open job's description (matched / missing keywords + tips), JD scraped from the page
+- **Application tracking** — logs every submit and surfaces stats (jobs applied, time saved, recent activity) on the dashboard
+- **Auto-advance** (opt-in) — clicks "Next" between steps for you; **never** auto-submits
+- **"Fill this page"** button in the popup for instant manual triggering
+- Resume-first onboarding: upload your CV, we extract everything, then a chat fills only the gaps
+- **Safe by design** — runs in your own browser, you review and submit; no headless bots or mass automation
 
 ---
 
@@ -218,7 +222,12 @@ CORS_ORIGINS=["chrome-extension://YOUR_EXTENSION_ID","http://localhost:3000"]
 | `GET` | `/api/v1/resume/status` | Resume processing status |
 | `POST` | `/api/v1/feedback` | Save a user-corrected answer |
 | `POST` | `/api/v1/chat/field` | Guided Q&A — normalize and save a single profile field |
-| `POST` | `/api/v1/chat/stream` | SSE streaming free-form chat with profile context |
+| `POST` | `/api/v1/chat/stream` | SSE streaming chat with profile context (onboarding mode available) |
+| `POST` | `/api/v1/ats/score` | Score the resume against a job description (JD from the extension) |
+| `GET` `POST` | `/api/v1/applications` | List recent applications / log a submitted application |
+| `GET` | `/api/v1/applications/stats` | Dashboard stats (total, this week, time saved) |
+| `GET` `PUT` `DELETE` | `/api/v1/answers` | Manage learned answers (Answer Library) |
+| `POST` | `/api/v1/support/issue` | Submit a bug/feature report (emailed via Resend) |
 
 ### System
 
@@ -240,9 +249,12 @@ CORS_ORIGINS=["chrome-extension://YOUR_EXTENSION_ID","http://localhost:3000"]
 | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Access token lifetime |
 | `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Refresh token lifetime |
 | `CORS_ORIGINS` | `[...]` | Allowed origins — must include your extension ID |
-| `OPENAI_LLM_MODEL` | `gpt-4o-mini` | LLM model for field inference |
+| `OPENAI_LLM_MODEL` | `gpt-4o-mini` | LLM model for field inference + ATS scoring |
 | `EMBEDDING_DIMENSIONS` | `1536` | Embedding size (must match the embed model) |
 | `MAX_RESUME_SIZE_MB` | `10` | Maximum resume upload size |
+| `RESEND_API_KEY` | — | Resend API key for the "Raise an issue" support emails |
+| `RESEND_FROM` | `NeuroApply <onboarding@resend.dev>` | Verified Resend sender address |
+| `SUPPORT_EMAIL` | — | Inbox that issue reports are sent to |
 
 ---
 

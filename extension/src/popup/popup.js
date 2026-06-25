@@ -90,6 +90,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 3000);
   });
 
+  // ── ATS score of the current job ────────────────────────────────
+  const atsBtn = document.getElementById('atsBtn');
+  atsBtn?.addEventListener('click', async () => {
+    const original = atsBtn.innerHTML;
+    atsBtn.textContent = 'Scoring…';
+    atsBtn.disabled = true;
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    try {
+      const res = await chrome.tabs.sendMessage(tab.id, { type: 'ATS_SCORE' });
+      if (res?.status === 'no_jd') atsBtn.textContent = 'Open a job posting first';
+      else if (res?.status === 'context_invalid') atsBtn.textContent = 'Reload the LinkedIn tab';
+      else { atsBtn.textContent = 'Score shown on page →'; setTimeout(() => window.close(), 700); }
+    } catch {
+      atsBtn.textContent = 'Reload the LinkedIn tab';
+    }
+    setTimeout(() => { atsBtn.innerHTML = original; atsBtn.disabled = false; }, 2600);
+  });
+
   // ── Open the web app (dashboard + AI profile chat) ──────────────
   const WEB_APP = 'https://neuro-apply-ai.vercel.app';
   const dashboardBtn = document.getElementById('dashboardBtn');

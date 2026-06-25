@@ -273,6 +273,50 @@
     return null;
   }
 
+  // Scrape the job description text from the LinkedIn job page.
+  function getJobDescription() {
+    const sels = ['#job-details', '.jobs-description__content', '.jobs-box__html-content',
+                  '.jobs-description-content__text', '.jobs-description', 'article'];
+    let best = '';
+    for (const s of sels) {
+      for (const el of document.querySelectorAll(s)) {
+        const t = (el.innerText || '').trim();
+        if (t.length > best.length) best = t;
+      }
+    }
+    return best.slice(0, 8000);
+  }
+
+  // Run an ATS match of this job against the user's resume, shown in the widget.
+  async function runAtsScore(jd) {
+    ChatWidget.open();
+    ChatWidget.clear();
+    ChatWidget.say('Analyzing this job against your resume…');
+    ChatWidget.startTyping();
+    try {
+      const res = await chrome.runtime.sendMessage({
+        type: 'ATS_SCORE',
+        payload: { job_description: jd, job_title: extractJobTitle() },
+      });
+      ChatWidget.stopTyping();
+      if (!res || res.error) {
+        ChatWidget.say(`⚠️ ${res?.message || res?.error || 'Could not score this job.'}`);
+        ChatWidget.scheduleClose(7000);
+        return;
+      }
+      const color = res.score >= 75 ? '#4ade80' : res.score >= 50 ? '#fbbf24' : '#f87171';
+      ChatWidget.say(`<div style="font-size:30px;font-weight:800;color:${color};line-height:1">${res.score}<span style="font-size:14px;color:#94a3b8;font-weight:600">/100</span></div><div style="font-size:12px;color:#cbd5e1;margin-top:4px">${res.summary || 'ATS match score'}</div>`);
+      if (res.matched?.length) ChatWidget.say(`<span class="na-ok">✓ Matched</span><br>${res.matched.slice(0, 8).join(' · ')}`, 250);
+      if (res.missing?.length) ChatWidget.say(`<span class="na-warn">⚠ Missing</span><br>${res.missing.slice(0, 8).join(' · ')}`, 450);
+      if (res.suggestions?.length) ChatWidget.say(`<b>💡 To improve</b><br>${res.suggestions.map(s => '• ' + s).join('<br>')}`, 650);
+      ChatWidget.scheduleClose(22000);
+    } catch {
+      ChatWidget.stopTyping();
+      ChatWidget.say('Something went wrong scoring this job.');
+      ChatWidget.scheduleClose(6000);
+    }
+  }
+
   // Best-effort job title from the underlying job posting page.
   function extractJobTitle() {
     const el = document.querySelector(
@@ -567,9 +611,21 @@
     scanSoon(700);
   });
 
-  // ── Manual fill trigger (from popup "Fill this page" button) ─────────
+  // ── Messages from the popup ──────────────────────────────────────────
   try {
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+      // ATS score: scrape the JD on this page and score it.
+      if (msg.type === 'ATS_SCORE') {
+        if (!isContextValid()) { sendResponse({ status: 'context_invalid' }); return true; }
+        const jd = getJobDescription();
+        if (!jd || jd.length < 60) {
+          sendResponse({ status: 'no_jd' });
+          return true;
+        }
+        runAtsScore(jd).then(() => sendResponse({ status: 'ok' }));
+        return true;
+      }
+
       if (msg.type !== 'FILL_NOW') return;
       if (!isContextValid()) { sendResponse({ status: 'context_invalid' }); return true; }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import RaiseIssue from "./RaiseIssue";
+
 export default function Footer() {
   return (
     <footer style={{
@@ -38,6 +40,7 @@ export default function Footer() {
               onMouseLeave={e => (e.currentTarget.style.color = "#334155")}
             >{l.label}</a>
           ))}
+          <RaiseIssue variant="link" />
         </div>
 
         <span style={{ fontSize: 12, color: "#1e293b" }}>

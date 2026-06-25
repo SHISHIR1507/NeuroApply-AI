@@ -198,6 +198,12 @@ async function submitFeedback(payload) {
 // ------------------------------------------------------------------
 // Application logging (on submit) — powers dashboard stats
 // ------------------------------------------------------------------
+async function atsScore(payload) {
+  const token = await getAuthToken();
+  if (!token) return { error: 'auth_required', message: 'Please log in first' };
+  return apiRequest('/ats/score', { method: 'POST', body: JSON.stringify(payload) });
+}
+
 async function logApplication(payload) {
   const token = await getAuthToken();
   if (!token) return { status: 'no_auth' };
@@ -235,6 +241,7 @@ function simpleHash(str) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const handlers = {
     'RESOLVE_FIELDS': () => resolveFields(request.payload),
+    'ATS_SCORE': () => atsScore(request.payload),
     'LOG_APPLICATION': () => logApplication(request.payload),
     'SUBMIT_FEEDBACK': () => submitFeedback(request.payload),
     'LOGIN': () => handleLogin(request.payload),

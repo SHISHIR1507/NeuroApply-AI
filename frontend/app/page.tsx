@@ -4,6 +4,7 @@ import StatsBar from "@/components/StatsBar";
 import HowItWorks from "@/components/HowItWorks";
 import Features from "@/components/Features";
 import Demo from "@/components/Demo";
+import Safety from "@/components/Safety";
 import CTA from "@/components/CTA";
 import Footer from "@/components/Footer";
 
@@ -17,6 +18,7 @@ export default function LandingPage() {
         <HowItWorks />
         <Features />
         <Demo />
+        <Safety />
         <CTA />
       </main>
       <Footer />
