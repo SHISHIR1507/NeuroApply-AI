@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { api } from "@/lib/api";
+import { api, Profile } from "@/lib/api";
 
 type Msg = { role: "bot" | "user"; text: string; tags?: string[] };
 
@@ -14,8 +14,39 @@ const LABELS: Record<string, string> = {
   linkedin_url: "LinkedIn", github_url: "GitHub", portfolio_url: "Portfolio", skills: "Skills",
 };
 
-const GREETING =
-  "Hey! 👋 I'm your NeuroApply assistant. Let's build your profile so I can autofill job applications for you — just chat naturally. To start: **what's your current role, and how many years of experience do you have?**";
+// Essential fields the onboarding tries to collect, in order, with the
+// question to ask for each. Drives a profile-aware greeting.
+const NEEDED: { key: keyof Profile; q: string }[] = [
+  { key: "current_title", q: "what's your current role or title?" },
+  { key: "years_of_experience", q: "how many years of experience do you have?" },
+  { key: "location", q: "where are you based — and open to relocating?" },
+  { key: "expected_salary", q: "what's your expected salary?" },
+  { key: "notice_period", q: "what's your notice period?" },
+  { key: "work_authorization", q: "what's your work authorization or citizenship?" },
+  { key: "skills", q: "what are a few of your key skills?" },
+  { key: "linkedin_url", q: "what's your LinkedIn profile URL?" },
+];
+
+function isEmpty(v: unknown) {
+  return v == null || v === "" || (Array.isArray(v) && v.length === 0);
+}
+
+function buildGreeting(profile?: Profile | null): string {
+  if (!profile) {
+    return "Hey! 👋 I'm your NeuroApply assistant. Let's build your profile so I can autofill job applications for you. To start: **what's your current role, and how many years of experience do you have?**";
+  }
+  const missing = NEEDED.filter((f) => isEmpty(profile[f.key]));
+  const filledCount = NEEDED.length - missing.length;
+
+  if (missing.length === 0) {
+    return "Your profile looks complete ✅ — I've got everything I need. Tell me anything you'd like to **update or add**, or head to your dashboard.";
+  }
+  if (filledCount >= 2) {
+    // Came in with data (e.g. from a resume) — acknowledge and ask the gap.
+    return `Nice — I've already got ${filledCount} things from your profile ✓. Just a few gaps left. First: **${missing[0].q}**`;
+  }
+  return `Hey! 👋 Let's finish setting up your profile. First: **${missing[0].q}**`;
+}
 
 const STARTERS = [
   "I'm a Frontend Engineer with 3 years of experience",
@@ -23,7 +54,7 @@ const STARTERS = [
   "I'm based in Bengaluru, open to relocating",
 ];
 
-export default function OnboardingChat({ onFieldsSaved }: { onFieldsSaved?: (fields: Record<string, unknown>) => void }) {
+export default function OnboardingChat({ profile, onFieldsSaved }: { profile?: Profile | null; onFieldsSaved?: (fields: Record<string, unknown>) => void }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [booting, setBooting] = useState(true);
   const [input, setInput] = useState("");
@@ -32,13 +63,15 @@ export default function OnboardingChat({ onFieldsSaved }: { onFieldsSaved?: (fie
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // The greeting "arrives" — typing indicator first, then it pops in.
+  // It's profile-aware: it asks for the first MISSING field, never re-asks
+  // things we already know (e.g. from the resume).
   useEffect(() => {
     const t = setTimeout(() => {
-      setMessages([{ role: "bot", text: GREETING }]);
+      setMessages([{ role: "bot", text: buildGreeting(profile) }]);
       setBooting(false);
     }, 750);
     return () => clearTimeout(t);
-  }, []);
+  }, [profile]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -96,7 +129,8 @@ export default function OnboardingChat({ onFieldsSaved }: { onFieldsSaved?: (fie
     }
   }
 
-  const showStarters = messages.length <= 1 && !busy && !booting;
+  const hasData = !!profile && NEEDED.some((f) => !isEmpty(profile[f.key]));
+  const showStarters = messages.length <= 1 && !busy && !booting && !hasData;
 
   return (
     <div style={shell}>

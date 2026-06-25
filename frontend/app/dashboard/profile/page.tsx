@@ -55,7 +55,7 @@ export default function ProfilePage() {
           <motion.div key="c" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
             <Header title="Let's build your profile" sub="Chat naturally — I'll capture everything as we go." />
             <div style={chatGrid}>
-              <OnboardingChat onFieldsSaved={handleFieldsSaved} />
+              <OnboardingChat profile={profile} onFieldsSaved={handleFieldsSaved} />
               <CapturedPanel profile={profile} filledCount={filledCount} onDone={() => setView("summary")} />
             </div>
           </motion.div>

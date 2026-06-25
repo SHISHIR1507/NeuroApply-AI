@@ -157,7 +157,7 @@ export default function WelcomePage() {
               <h2 style={{ ...title, fontSize: 30, margin: 0 }}>Let&rsquo;s build your profile</h2>
               <p style={{ color: "#64748b", fontSize: 14.5, margin: "8px 0 0" }}>Chat naturally — I&rsquo;ll capture everything automatically.</p>
             </div>
-            <OnboardingChat />
+            <OnboardingChat profile={extracted} />
             <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
               <button onClick={finish} className="na-cta" style={{ padding: "13px 30px", fontSize: 15 }}>
                 I&rsquo;m done — go to dashboard <Arrow />
