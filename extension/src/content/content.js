@@ -2,6 +2,13 @@
  * NeuroApply AI — Content Script
  */
 
+// Guard against double-injection (re-inject on extension update hits this first).
+// Tear down any previous instance cleanly before re-running.
+if (window.__neuroapplyLoaded) {
+  try { window.__neuroapplyCleanup?.(); } catch {}
+}
+window.__neuroapplyLoaded = true;
+
 (() => {
   let isProcessing = false;
   const processedSignatures = new Set();
@@ -12,6 +19,24 @@
   // Application tracking — accumulated across a multi-step Easy Apply flow.
   let lastCompany = null;
   let lastFilledTotal = 0;
+
+  // ── Debounced signature clear ────────────────────────────────────────
+  // LinkedIn animates between steps by briefly removing the dialog from the DOM.
+  // If we clear processedSignatures immediately on "no dialog", the step
+  // re-appears with a clean set → re-autofills → auto-advances → infinite loop.
+  // We only clear after the dialog has been gone for 2 s (real close, not transition).
+  let _clearSigTimer = null;
+  function scheduleSigClear(ms = 2000) {
+    if (_clearSigTimer) return; // already scheduled
+    _clearSigTimer = setTimeout(() => {
+      processedSignatures.clear();
+      _clearSigTimer = null;
+    }, ms);
+  }
+  function cancelSigClear() {
+    clearTimeout(_clearSigTimer);
+    _clearSigTimer = null;
+  }
 
   // ── isEnabled cache ──────────────────────────────────────────────────
   // Avoids a chrome.storage.local.get() on every DOM mutation.
@@ -358,6 +383,23 @@
         }
       }
     }
+
+    // Fallback: LinkedIn sometimes renders Easy Apply at /apply/ as a full-page
+    // overlay WITHOUT role="dialog". Scan the page body directly.
+    if (window.location.pathname.includes('/apply')) {
+      for (const h of document.querySelectorAll('h1, h2, h3, h4')) {
+        const t = h.textContent.trim().toLowerCase();
+        if (t === 'easy apply' || t.startsWith('apply to')) {
+          // Walk up to the nearest container that holds the form inputs
+          let el = h.parentElement;
+          for (let i = 0; i < 8 && el && el !== document.body; i++) {
+            if (el.querySelectorAll('input, select, textarea').length > 0) return el;
+            el = el.parentElement;
+          }
+        }
+      }
+    }
+
     return null;
   }
 
@@ -550,7 +592,14 @@
           if (nextBtn) {
             ChatWidget.say('Auto-advancing to the next step… ➡️', 700);
             const delay = 1000 + Math.random() * 800; // human-like pacing
-            setTimeout(() => { if (isContextValid()) nextBtn.click(); }, delay);
+            setTimeout(() => {
+              if (!isContextValid()) return;
+              // Abort if the user is actively typing in a form field
+              const active = document.activeElement;
+              if (active && modal.contains(active) &&
+                  (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+              nextBtn.click();
+            }, delay);
           }
         }
       } else {
@@ -626,19 +675,24 @@
   async function scan() {
     if (!isContextValid() || !(await isEnabled())) return;
 
-    // Fast bail: no dialog in DOM → definitely not on Easy Apply
-    if (!document.querySelector('[role="dialog"]')) {
-      processedSignatures.clear();
+    // Fast bail: no dialog in DOM → definitely not on Easy Apply.
+    // Use a debounced clear — LinkedIn briefly removes the dialog during step
+    // transitions, and an immediate clear would let the returning step re-autofill.
+    const hasDialog = !!document.querySelector('[role="dialog"]');
+    const isApplyPage = window.location.pathname.includes('/apply');
+    if (!hasDialog && !isApplyPage) {
+      scheduleSigClear(2000);
       return;
     }
 
     const modal = findEasyApplyModal();
     if (modal) {
+      cancelSigClear(); // dialog is active — cancel any pending clear
       modal.dataset.neuroapplyModal = 'true'; // mark before attaching listeners
       processModal(modal);
       attachCorrectionListeners(modal);
     } else {
-      processedSignatures.clear();
+      scheduleSigClear(2000);
     }
   }
 
@@ -794,6 +848,14 @@
         scanSoon(600);
       }
     }, 1500);
+
+    // Expose cleanup so a re-injected instance can tear this one down first.
+    window.__neuroapplyCleanup = () => {
+      try { observer.disconnect(); } catch {}
+      clearInterval(_heartbeat);
+      clearTimeout(_debounceTimer);
+      _observerActive = false;
+    };
 
     if (!(await isEnabled())) return; // Disabled — do nothing, storage listener will activate later
     startObserver();
