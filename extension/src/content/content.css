@@ -135,6 +135,160 @@
   30%            { transform: translateY(-5px); opacity: 1; }
 }
 
+/* ==================================================================
+   ATS Score Card
+   Separate floating card (bottom-left), separate from the chat widget.
+   Design: 21st.dev dark glassmorphism style — SVG ring + chip pills.
+   ================================================================== */
+
+#na-ats-card {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  width: 272px;
+  background: linear-gradient(160deg, #13111f 0%, #0d0b18 100%);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  border-radius: 20px;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  z-index: 2147483641;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow: hidden;
+  transform: translateY(calc(100% + 24px));
+  opacity: 0;
+  transition: transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.28s ease;
+  pointer-events: none;
+}
+#na-ats-card.na-ats-open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: all;
+}
+#na-ats-card.na-ats-closing {
+  transform: translateY(calc(100% + 24px));
+  opacity: 0;
+}
+
+.na-ats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 0;
+}
+.na-ats-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #818cf8;
+}
+.na-ats-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #94a3b8;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.na-ats-close:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
+
+.na-ats-body {
+  padding: 10px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Ring */
+.na-ats-ring-wrap {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.na-ats-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 8;
+}
+.na-ats-fill {
+  fill: none;
+  stroke: #818cf8;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 50px 50px;
+  transition: stroke-dashoffset 1.3s cubic-bezier(0.34, 1.1, 0.64, 1), stroke 0.4s ease;
+}
+.na-ats-center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  gap: 2px;
+}
+.na-ats-num {
+  font-size: 34px;
+  font-weight: 800;
+  color: #818cf8;
+  transition: color 0.4s ease;
+  line-height: 1;
+}
+.na-ats-den {
+  font-size: 11px;
+  color: #475569;
+  font-weight: 500;
+}
+
+/* Summary text */
+.na-ats-summary {
+  font-size: 11.5px;
+  color: #94a3b8;
+  text-align: center;
+  line-height: 1.5;
+  margin: 0;
+  min-height: 16px;
+}
+
+/* Keyword chip pills */
+.na-ats-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: center;
+  width: 100%;
+}
+.na-chip {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.na-chip-ok {
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.22);
+}
+.na-chip-warn {
+  background: rgba(251, 191, 36, 0.08);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
 /* ------------------------------------------------------------------
    Autofill visual feedback
    ------------------------------------------------------------------ */

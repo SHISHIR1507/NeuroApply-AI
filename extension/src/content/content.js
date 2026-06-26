@@ -4,7 +4,7 @@
 
 (() => {
   let isProcessing = false;
-  let lastProcessedFields = null;
+  const processedSignatures = new Set();
   let _debounceTimer = null;
   let _observerActive = false;
   let _heartbeat = null;
@@ -218,6 +218,108 @@
     return { open, close, clear, say, startTyping, stopTyping, scheduleClose, isOpen, quip };
   })();
 
+  // ── ATS Score Card ───────────────────────────────────────────────────
+  // Separate circular-ring card (bottom-left). Inspired by 21st.dev's dark
+  // glassmorphism card pattern with SVG stroke-dashoffset ring animation.
+  const AtsCard = (() => {
+    let root = null;
+    let closeTimer = null;
+    const R = 40;
+    const CIRC = +(2 * Math.PI * R).toFixed(2); // 251.33
+
+    function build() {
+      if (root) return;
+      root = document.createElement('div');
+      root.id = 'na-ats-card';
+      root.innerHTML = `
+        <div class="na-ats-header">
+          <span class="na-ats-title">ATS Match Score</span>
+          <button class="na-ats-close" title="Dismiss">×</button>
+        </div>
+        <div class="na-ats-body">
+          <div class="na-ats-ring-wrap">
+            <svg viewBox="0 0 100 100" width="108" height="108">
+              <circle class="na-ats-track" cx="50" cy="50" r="${R}"/>
+              <circle class="na-ats-fill" cx="50" cy="50" r="${R}"
+                style="stroke-dasharray:${CIRC};stroke-dashoffset:${CIRC}"/>
+            </svg>
+            <div class="na-ats-center">
+              <span class="na-ats-num">–</span>
+              <span class="na-ats-den">/100</span>
+            </div>
+          </div>
+          <p class="na-ats-summary"></p>
+          <div class="na-ats-chips na-chips-matched"></div>
+          <div class="na-ats-chips na-chips-missing"></div>
+        </div>
+      `;
+      root.querySelector('.na-ats-close').addEventListener('click', close);
+      document.body.appendChild(root);
+    }
+
+    function open() {
+      build();
+      clearTimeout(closeTimer);
+      root.classList.remove('na-ats-closing');
+      void root.offsetWidth;
+      root.classList.add('na-ats-open');
+    }
+
+    function close() {
+      if (!root) return;
+      clearTimeout(closeTimer);
+      root.classList.add('na-ats-closing');
+      root.classList.remove('na-ats-open');
+    }
+
+    function showLoading() {
+      build();
+      root.querySelector('.na-ats-num').textContent = '…';
+      root.querySelector('.na-ats-num').style.color = '#818cf8';
+      root.querySelector('.na-ats-summary').textContent = 'Analyzing your resume against this job…';
+      root.querySelector('.na-chips-matched').innerHTML = '';
+      root.querySelector('.na-chips-missing').innerHTML = '';
+      const fill = root.querySelector('.na-ats-fill');
+      fill.style.stroke = '#818cf8';
+      fill.style.strokeDashoffset = CIRC;
+    }
+
+    function setResult(score, summary, matched, missing) {
+      build();
+      const color = score >= 75 ? '#4ade80' : score >= 50 ? '#fbbf24' : '#f87171';
+      const fill = root.querySelector('.na-ats-fill');
+      const num = root.querySelector('.na-ats-num');
+
+      num.textContent = score;
+      num.style.color = color;
+      fill.style.stroke = color;
+      // Animate the ring — tiny delay lets the transition trigger
+      setTimeout(() => {
+        fill.style.strokeDashoffset = CIRC * (1 - score / 100);
+      }, 60);
+
+      root.querySelector('.na-ats-summary').textContent = summary || '';
+      root.querySelector('.na-chips-matched').innerHTML =
+        (matched || []).slice(0, 8).map(k => `<span class="na-chip na-chip-ok">${k}</span>`).join('');
+      root.querySelector('.na-chips-missing').innerHTML =
+        (missing || []).slice(0, 6).map(k => `<span class="na-chip na-chip-warn">${k}</span>`).join('');
+    }
+
+    function setError(msg) {
+      build();
+      root.querySelector('.na-ats-num').textContent = '!';
+      root.querySelector('.na-ats-num').style.color = '#f87171';
+      root.querySelector('.na-ats-summary').textContent = msg;
+    }
+
+    function scheduleClose(ms) {
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(close, ms);
+    }
+
+    return { open, close, showLoading, setResult, setError, scheduleClose };
+  })();
+
   // ── Modal detection ──────────────────────────────────────────────────
   // Only matches LinkedIn's actual Easy Apply overlay — never search filters,
   // inline page content, or other dialogs.
@@ -287,33 +389,25 @@
     return best.slice(0, 8000);
   }
 
-  // Run an ATS match of this job against the user's resume, shown in the widget.
+  // Run an ATS match of this job against the user's resume, shown in the score card.
   async function runAtsScore(jd) {
-    ChatWidget.open();
-    ChatWidget.clear();
-    ChatWidget.say('Analyzing this job against your resume…');
-    ChatWidget.startTyping();
+    AtsCard.open();
+    AtsCard.showLoading();
     try {
       const res = await chrome.runtime.sendMessage({
         type: 'ATS_SCORE',
         payload: { job_description: jd, job_title: extractJobTitle() },
       });
-      ChatWidget.stopTyping();
       if (!res || res.error) {
-        ChatWidget.say(`⚠️ ${res?.message || res?.error || 'Could not score this job.'}`);
-        ChatWidget.scheduleClose(7000);
+        AtsCard.setError(res?.message || res?.error || 'Could not score this job.');
+        AtsCard.scheduleClose(7000);
         return;
       }
-      const color = res.score >= 75 ? '#4ade80' : res.score >= 50 ? '#fbbf24' : '#f87171';
-      ChatWidget.say(`<div style="font-size:30px;font-weight:800;color:${color};line-height:1">${res.score}<span style="font-size:14px;color:#94a3b8;font-weight:600">/100</span></div><div style="font-size:12px;color:#cbd5e1;margin-top:4px">${res.summary || 'ATS match score'}</div>`);
-      if (res.matched?.length) ChatWidget.say(`<span class="na-ok">✓ Matched</span><br>${res.matched.slice(0, 8).join(' · ')}`, 250);
-      if (res.missing?.length) ChatWidget.say(`<span class="na-warn">⚠ Missing</span><br>${res.missing.slice(0, 8).join(' · ')}`, 450);
-      if (res.suggestions?.length) ChatWidget.say(`<b>💡 To improve</b><br>${res.suggestions.map(s => '• ' + s).join('<br>')}`, 650);
-      ChatWidget.scheduleClose(22000);
+      AtsCard.setResult(res.score, res.summary, res.matched, res.missing);
+      AtsCard.scheduleClose(25000);
     } catch {
-      ChatWidget.stopTyping();
-      ChatWidget.say('Something went wrong scoring this job.');
-      ChatWidget.scheduleClose(6000);
+      AtsCard.setError('Something went wrong scoring this job.');
+      AtsCard.scheduleClose(6000);
     }
   }
 
@@ -355,17 +449,31 @@
     } catch {
       return;
     }
-    if (!fields.length) return;
+    if (!fields.length) {
+      // Final review step has no inputs — auto-click Review once if opted in.
+      const reviewSig = currentJobKey() + '::__review__';
+      if (!processedSignatures.has(reviewSig) && await isAutoAdvance()) {
+        const reviewBtn = findNextButton(modal);
+        if (reviewBtn) {
+          processedSignatures.add(reviewSig);
+          ChatWidget.open();
+          ChatWidget.clear();
+          ChatWidget.say('All done — auto-clicking Review… ✅');
+          ChatWidget.scheduleClose(4000);
+          setTimeout(() => { if (isContextValid()) reviewBtn.click(); }, 700);
+        }
+      }
+      return;
+    }
 
     // Signature is per-job + per-field-set, so the same questions on a
     // different job are treated as new work (not a duplicate to skip).
     const fieldSignature = currentJobKey() + '::' + fields.map(f => f.label).join('|');
-    if (fieldSignature === lastProcessedFields) return; // already handled — stay silent
+    if (processedSignatures.has(fieldSignature)) return; // already handled — stay silent
 
     // ── Commit. Mark processed up-front so rapid re-entry bails above. ──
     isProcessing = true;
-    lastProcessedFields = fieldSignature;
-    modal.dataset.neuroapplyModal = 'true';
+    processedSignatures.add(fieldSignature);
 
     ChatWidget.open();
     ChatWidget.clear();
@@ -520,16 +628,17 @@
 
     // Fast bail: no dialog in DOM → definitely not on Easy Apply
     if (!document.querySelector('[role="dialog"]')) {
-      lastProcessedFields = null;
+      processedSignatures.clear();
       return;
     }
 
     const modal = findEasyApplyModal();
     if (modal) {
+      modal.dataset.neuroapplyModal = 'true'; // mark before attaching listeners
       processModal(modal);
       attachCorrectionListeners(modal);
     } else {
-      lastProcessedFields = null;
+      processedSignatures.clear();
     }
   }
 
@@ -594,7 +703,6 @@
     if (!isNavBtn) return;
 
     isProcessing = false;
-    lastProcessedFields = null;
     invalidateEnabledCache();
     scanSoon(900); // let LinkedIn render the next step first
   }, true);
@@ -605,7 +713,7 @@
   window.addEventListener('popstate', () => {
     if (!isContextValid()) return;
     isProcessing = false;
-    lastProcessedFields = null;
+    processedSignatures.clear();
     lastCompany = null;
     lastFilledTotal = 0;
     scanSoon(700);
@@ -630,7 +738,7 @@
       if (!isContextValid()) { sendResponse({ status: 'context_invalid' }); return true; }
 
       isProcessing = false;
-      lastProcessedFields = null;
+      processedSignatures.clear();
       invalidateEnabledCache();
 
       const modal = findEasyApplyModal();
@@ -654,7 +762,7 @@
       if (area !== 'local' || !('neuroapplyEnabled' in changes)) return;
       invalidateEnabledCache();
       if (changes.neuroapplyEnabled.newValue !== false) {
-        lastProcessedFields = null; // force a fresh fill after enabling
+        processedSignatures.clear(); // force a fresh fill after enabling
         startObserver();            // starts observer (if needed) + scans now
       } else {
         stopObserver();
@@ -680,7 +788,7 @@
       if (location.href !== _lastUrl) {
         _lastUrl = location.href;
         isProcessing = false;
-        lastProcessedFields = null;
+        processedSignatures.clear();
         lastCompany = null;
         lastFilledTotal = 0;
         scanSoon(600);
