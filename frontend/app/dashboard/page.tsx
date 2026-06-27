@@ -43,7 +43,7 @@ export default function DashboardPage() {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#64748b", padding: 40 }}>
         <span className="na-spin-d" /> Loading your dashboard…
-        <style>{`.na-spin-d{width:18px;height:18px;border-radius:50%;border:2px solid rgba(129,140,248,0.3);border-top-color:#a78bfa;animation:nar .7s linear infinite}@keyframes nar{to{transform:rotate(360deg)}}`}</style>
+        <style>{`.na-spin-d{width:18px;height:18px;border-radius:50%;border:2px solid rgba(245,158,11,0.3);border-top-color:#f59e0b;animation:nar .7s linear infinite}@keyframes nar{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
@@ -60,10 +60,10 @@ export default function DashboardPage() {
 
       {/* Stat strip */}
       <div style={statStrip}>
-        <BigStat delay={0.05} value={String(stats?.total_applied ?? 0)} label="Jobs applied" icon={<IconBriefcase />} accent="#6366f1" />
+        <BigStat delay={0.05} value={String(stats?.total_applied ?? 0)} label="Jobs applied" icon={<IconBriefcase />} accent="#f59e0b" />
         <BigStat delay={0.11} value={formatTime(stats?.time_saved_minutes ?? 0)} label="Time saved" icon={<IconClock />} accent="#4ade80" />
         <BigStat delay={0.17} value={String(stats?.this_week ?? 0)} label="Applied this week" icon={<IconTrend />} accent="#22d3ee" />
-        <BigStat delay={0.23} value={`${pct}%`} label="Profile strength" icon={<IconUser />} accent="#a78bfa" />
+        <BigStat delay={0.23} value={`${pct}%`} label="Profile strength" icon={<IconUser />} accent="#fbbf24" />
       </div>
 
       {/* Main grid */}
@@ -72,9 +72,9 @@ export default function DashboardPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Panel delay={0.28} title="Quick actions">
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <ActionRow href="/dashboard/profile" accent="#6366f1" icon={<IconSpark />} title="Build profile with AI" desc="Chat to set up or update your details" />
+              <ActionRow href="/dashboard/profile" accent="#f59e0b" icon={<IconSpark />} title="Build profile with AI" desc="Chat to set up or update your details" />
               <ActionRow href="/dashboard/resume" accent="#4ade80" icon={<IconFile />} title={resume?.has_resume ? "Manage resume" : "Upload resume"} desc={resume?.has_resume ? "Replace or review your resume" : "Power AI answers from your CV"} />
-              <ActionRow external href="https://chromewebstore.google.com/detail/nglhmaeijiphnabgdeeimepoophpffpd" accent="#a78bfa" icon={<IconPlug />} title="Get the extension" desc="Install on Chrome to start autofilling" />
+              <ActionRow external href="https://chromewebstore.google.com/detail/nglhmaeijiphnabgdeeimepoophpffpd" accent="#fbbf24" icon={<IconPlug />} title="Get the extension" desc="Install on Chrome to start autofilling" />
             </div>
           </Panel>
 
@@ -221,11 +221,11 @@ const actionIcon: React.CSSProperties = { width: 34, height: 34, borderRadius: 1
 const activityRow: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, padding: "12px 0" };
 const companyAvatar: React.CSSProperties = {
   width: 38, height: 38, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
-  background: "linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.18))", border: "1px solid rgba(129,140,248,0.25)",
-  color: "#c7d2fe", fontWeight: 700, fontSize: 15, flexShrink: 0,
+  background: "linear-gradient(135deg, rgba(245,158,11,0.25), rgba(251,191,36,0.15))", border: "1px solid rgba(245,158,11,0.3)",
+  color: "#07070a", fontWeight: 700, fontSize: 15, flexShrink: 0,
 };
 const emptyState: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "36px 16px", gap: 6 };
 const emptyIcon: React.CSSProperties = {
   width: 52, height: 52, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6,
-  background: "rgba(99,102,241,0.12)", border: "1px solid rgba(129,140,248,0.25)", color: "#a78bfa",
+  background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b",
 };

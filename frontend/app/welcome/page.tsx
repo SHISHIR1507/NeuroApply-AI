@@ -71,7 +71,7 @@ export default function WelcomePage() {
 
               <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.6 }} style={lead}>
                 NeuroApply fills every LinkedIn Easy Apply form for you — accurately, in seconds.
-                Apply to <b style={{ color: "#c7d2fe" }}>50 jobs</b> in the time it used to take for one.
+                Apply to <b style={{ color: "#fbbf24" }}>50 jobs</b> in the time it used to take for one.
               </motion.p>
 
               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.6 }} style={{ display: "flex", flexDirection: "column", gap: 11, margin: "26px 0 32px" }}>
@@ -110,7 +110,7 @@ export default function WelcomePage() {
               <h2 style={{ ...title, fontSize: 24, margin: "20px 0 8px" }}>Reading your resume…</h2>
               <p style={{ color: "#64748b", fontSize: 14, margin: 0 }}>Extracting your details with AI — this takes a few seconds.</p>
             </div>
-            <style>{`.na-spin-lg{width:42px;height:42px;border-radius:50%;border:3px solid rgba(129,140,248,0.25);border-top-color:#a78bfa;animation:nars .8s linear infinite;display:inline-block}@keyframes nars{to{transform:rotate(360deg)}}`}</style>
+            <style>{`.na-spin-lg{width:42px;height:42px;border-radius:50%;border:3px solid rgba(245,158,11,0.25);border-top-color:#f59e0b;animation:nars .8s linear infinite;display:inline-block}@keyframes nars{to{transform:rotate(360deg)}}`}</style>
           </motion.div>
         ) : step === "review" ? (
           <motion.div key="review" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} style={{ ...chatWrap, maxWidth: 620 }}>
@@ -168,9 +168,9 @@ export default function WelcomePage() {
       </AnimatePresence>
 
       <style>{`
-        .na-cta { display:inline-flex; align-items:center; gap:9px; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff;
-          border:none; border-radius:13px; font-weight:600; cursor:pointer; box-shadow:0 10px 26px rgba(99,102,241,0.42); transition:transform .15s, box-shadow .25s; }
-        .na-cta:hover { box-shadow:0 12px 32px rgba(99,102,241,0.58); }
+        .na-cta { display:inline-flex; align-items:center; gap:9px; background:linear-gradient(135deg,#f59e0b,#fbbf24); color:#07070a;
+          border:none; border-radius:13px; font-weight:600; cursor:pointer; box-shadow:0 10px 26px rgba(245,158,11,0.42); transition:transform .15s, box-shadow .25s; }
+        .na-cta:hover { box-shadow:0 12px 32px rgba(245,158,11,0.58); }
         .na-cta:active { transform:scale(0.97); }
         .na-ghost { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); color:#94a3b8; border-radius:13px; font-weight:500; cursor:pointer; transition:all .15s; }
         .na-ghost:hover { color:#e2e8f0; border-color:rgba(255,255,255,0.2); }
@@ -192,7 +192,7 @@ function ApplyAnimation() {
   return (
     <motion.div className="na-apply-anim" initial={{ opacity: 0, scale: 0.92, x: 30 }} animate={{ opacity: 1, scale: 1, x: 0 }}
       transition={{ delay: 0.3, duration: 0.7, ease: [0.22, 1, 0.36, 1] }} style={animFrame}>
-      <div style={{ position: "absolute", inset: -1, borderRadius: 22, background: "radial-gradient(circle at 50% 0%, rgba(99,102,241,0.4), transparent 60%)", filter: "blur(30px)", zIndex: -1 }} />
+      <div style={{ position: "absolute", inset: -1, borderRadius: 22, background: "radial-gradient(circle at 50% 0%, rgba(245,158,11,0.3), transparent 60%)", filter: "blur(30px)", zIndex: -1 }} />
       <div style={animHeader}>
         <div style={{ display: "flex", gap: 6 }}>
           {["#ff5f57", "#febc2e", "#28c840"].map((c) => <span key={c} style={{ width: 10, height: 10, borderRadius: "50%", background: c }} />)}
@@ -227,9 +227,9 @@ function UploadIcon() { return <svg width="17" height="17" viewBox="0 0 24 24" f
 
 const wrap: React.CSSProperties = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", position: "relative", overflow: "hidden" };
 const introGrid: React.CSSProperties = { position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "1fr 420px", gap: 56, alignItems: "center", maxWidth: 1100, width: "100%" };
-const badge: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 100, padding: "6px 14px", fontSize: 12.5, color: "#94a3b8", fontWeight: 500, marginBottom: 22 };
+const badge: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 100, padding: "6px 14px", fontSize: 12.5, color: "#94a3b8", fontWeight: 500, marginBottom: 22 };
 const title: React.CSSProperties = { fontSize: 44, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, color: "#f1f5f9", margin: 0 };
-const gradientText: React.CSSProperties = { background: "linear-gradient(135deg, #818cf8, #c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" };
+const gradientText: React.CSSProperties = { background: "linear-gradient(135deg, #f59e0b, #fbbf24)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" };
 const lead: React.CSSProperties = { color: "#94a3b8", fontSize: 16, lineHeight: 1.65, margin: "20px 0 0", maxWidth: 440 };
 const checkChip: React.CSSProperties = { width: 24, height: 24, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)", flexShrink: 0 };
 const chatWrap: React.CSSProperties = { position: "relative", zIndex: 1, width: "100%", maxWidth: 760 };
@@ -237,9 +237,9 @@ const uploadingCard: React.CSSProperties = { padding: "48px 36px", background: "
 const reviewCheck: React.CSSProperties = { width: 60, height: 60, margin: "0 auto", borderRadius: 17, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)", boxShadow: "0 0 28px rgba(74,222,128,0.3)" };
 const reviewCard: React.CSSProperties = { background: "rgba(255,255,255,0.03)", backdropFilter: "blur(18px)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 20, padding: 24 };
 const reviewGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 };
-const reviewSkill: React.CSSProperties = { background: "rgba(99,102,241,0.14)", color: "#c7d2fe", border: "1px solid rgba(129,140,248,0.3)", padding: "4px 11px", borderRadius: 999, fontSize: 12.5, fontWeight: 500 };
+const reviewSkill: React.CSSProperties = { background: "rgba(245,158,11,0.14)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.3)", padding: "4px 11px", borderRadius: 999, fontSize: 12.5, fontWeight: 500 };
 const animFrame: React.CSSProperties = { position: "relative", background: "rgba(15,20,40,0.7)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,0.5)" };
 const animHeader: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" };
 const animField: React.CSSProperties = { position: "relative", height: 38, borderRadius: 9, border: "1px solid rgba(74,222,128,0.35)", background: "rgba(255,255,255,0.02)", display: "flex", alignItems: "center" };
 const animCheck: React.CSSProperties = { position: "absolute", right: 12, display: "flex" };
-const animChip: React.CSSProperties = { margin: "0 22px 20px", display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(30,27,75,0.9)", border: "1px solid rgba(99,102,241,0.3)", color: "#4ade80", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 12 };
+const animChip: React.CSSProperties = { margin: "0 22px 20px", display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(20,15,5,0.9)", border: "1px solid rgba(245,158,11,0.3)", color: "#4ade80", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 12 };

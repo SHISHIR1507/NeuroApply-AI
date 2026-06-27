@@ -41,7 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         style={sidebar}
       >
         <div style={brand}>
-          <Image src="/logo.png" alt="" width={32} height={32} style={{ borderRadius: 8, boxShadow: "0 0 14px rgba(129,140,248,0.5)" }} />
+          <Image src="/logo.png" alt="" width={32} height={32} style={{ borderRadius: 8, boxShadow: "0 0 14px rgba(245,158,11,0.5)" }} />
           <span style={brandName}>NeuroApply</span>
         </div>
 
@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div style={{ ...navItem, ...(active ? navItemActive : {}) }}
                   onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
                   onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
-                  <span style={{ display: "flex", color: active ? "#a78bfa" : "#64748b" }}>{item.icon}</span>
+                  <span style={{ display: "flex", color: active ? "#f59e0b" : "#64748b" }}>{item.icon}</span>
                   <span>{item.label}</span>
                   {active && <span style={activeDot} />}
                 </div>
@@ -92,7 +92,7 @@ const brand: React.CSSProperties = {
 };
 const brandName: React.CSSProperties = {
   fontWeight: 700, fontSize: 16, letterSpacing: "-0.01em",
-  background: "linear-gradient(135deg, #c7d2fe, #a78bfa)",
+  background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
   WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
 };
 const nav: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 4, flex: 1 };
@@ -102,12 +102,12 @@ const navItem: React.CSSProperties = {
   transition: "background 0.18s, color 0.18s", position: "relative",
 };
 const navItemActive: React.CSSProperties = {
-  background: "linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.12))",
-  color: "#e9d5ff", border: "1px solid rgba(129,140,248,0.22)",
+  background: "linear-gradient(135deg, rgba(245,158,11,0.15), rgba(251,191,36,0.08))",
+  color: "#fef3c7", border: "1px solid rgba(245,158,11,0.3)",
 };
 const activeDot: React.CSSProperties = {
   marginLeft: "auto", width: 6, height: 6, borderRadius: "50%",
-  background: "#a78bfa", boxShadow: "0 0 8px #a78bfa",
+  background: "#f59e0b", boxShadow: "0 0 8px #f59e0b",
 };
 const logoutBtn: React.CSSProperties = {
   background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b",

@@ -99,7 +99,7 @@ export function ManualScene() {
 export function AutoScene() {
   return (
     <motion.div className="na-side-scene" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25, duration: 0.7 }} style={scene}>
-      <span style={label("#a5b4fc")}>With NeuroApply</span>
+      <span style={label("#f59e0b")}>With NeuroApply</span>
 
       <div style={stage}>
         {/* completed forms with green ✓ floating away */}
@@ -117,7 +117,7 @@ export function AutoScene() {
       </div>
 
       <p style={caption}>You kick back — NeuroApply<br />fills them all for you.</p>
-      <motion.span animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2.4, repeat: Infinity }} style={{ ...pill, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)" }}>✨ All done — go chill</motion.span>
+      <motion.span animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2.4, repeat: Infinity }} style={{ ...pill, color: "#f59e0b", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>All done — go chill</motion.span>
     </motion.div>
   );
 }
@@ -156,11 +156,11 @@ function PersonRelaxing() {
   return (
     <div style={{ position: "relative", zIndex: 2 }}>
       {/* zzz */}
-      <motion.span animate={{ y: [-2, -14, -2], opacity: [0.2, 0.9, 0.2] }} transition={{ duration: 2.6, repeat: Infinity }} style={{ position: "absolute", top: 6, left: 40, fontSize: 15, color: "#a5b4fc", fontWeight: 700 }}>z</motion.span>
-      <motion.span animate={{ y: [-2, -16, -2], opacity: [0.15, 0.8, 0.15] }} transition={{ duration: 2.6, repeat: Infinity, delay: 0.5 }} style={{ position: "absolute", top: 12, left: 54, fontSize: 11, color: "#a5b4fc", fontWeight: 700 }}>z</motion.span>
+      <motion.span animate={{ y: [-2, -14, -2], opacity: [0.2, 0.9, 0.2] }} transition={{ duration: 2.6, repeat: Infinity }} style={{ position: "absolute", top: 6, left: 40, fontSize: 15, color: "#f59e0b", fontWeight: 700 }}>z</motion.span>
+      <motion.span animate={{ y: [-2, -16, -2], opacity: [0.15, 0.8, 0.15] }} transition={{ duration: 2.6, repeat: Infinity, delay: 0.5 }} style={{ position: "absolute", top: 12, left: 54, fontSize: 11, color: "#f59e0b", fontWeight: 700 }}>z</motion.span>
       <motion.svg width="150" height="130" viewBox="0 0 150 130"
         animate={{ y: [0, -4, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>
-        <g stroke="#a5b4fc" strokeWidth="3.2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <g stroke="#f59e0b" strokeWidth="3.2" fill="none" strokeLinecap="round" strokeLinejoin="round">
           {/* ground */}
           <line x1="18" y1="110" x2="132" y2="110" opacity="0.4" />
           {/* reclined chair back */}
@@ -168,18 +168,18 @@ function PersonRelaxing() {
           {/* reclined torso */}
           <path d="M92 102 Q66 96 46 74" />
           {/* head tilted back */}
-          <circle cx="40" cy="64" r="11" fill="rgba(129,140,248,0.1)" />
+          <circle cx="40" cy="64" r="11" fill="rgba(245,158,11,0.1)" />
           {/* arm bent behind head */}
           <path d="M48 74 Q40 60 52 56" />
           {/* legs crossed up */}
           <path d="M92 102 H118 M104 102 L120 92" />
         </g>
         {/* coffee cup */}
-        <g stroke="#a5b4fc" strokeWidth="2.4" fill="none">
-          <path d="M86 96 h14 v8 a4 4 0 0 1 -4 4 h-6 a4 4 0 0 1 -4 -4 z" fill="rgba(129,140,248,0.12)" />
+        <g stroke="#f59e0b" strokeWidth="2.4" fill="none">
+          <path d="M86 96 h14 v8 a4 4 0 0 1 -4 4 h-6 a4 4 0 0 1 -4 -4 z" fill="rgba(245,158,11,0.12)" />
           <path d="M100 98 q5 0 5 4 t-5 4" />
         </g>
-        <motion.path d="M90 88 q2 -4 0 -8" stroke="#a5b4fc" strokeWidth="2" fill="none" opacity="0.6"
+        <motion.path d="M90 88 q2 -4 0 -8" stroke="#f59e0b" strokeWidth="2" fill="none" opacity="0.6"
           animate={{ y: [0, -6], opacity: [0, 0.6, 0] }} transition={{ duration: 2, repeat: Infinity }} />
       </motion.svg>
     </div>
@@ -201,9 +201,9 @@ export function AuthStyles() {
     <style>{`
       .na-input { width:100%; padding:12px 14px; font-size:14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.10); border-radius:11px; color:#f1f5f9; outline:none; backdrop-filter:blur(12px); transition:border-color .2s, box-shadow .2s, background .2s; }
       .na-input::placeholder { color:#5b6678; }
-      .na-input:focus { border-color:rgba(129,140,248,0.7); background:rgba(255,255,255,0.06); box-shadow:0 0 0 3px rgba(129,140,248,0.18), 0 0 22px rgba(129,140,248,0.22); }
-      .na-btn { position:relative; overflow:hidden; width:100%; padding:13px; margin-top:4px; font-size:14px; font-weight:600; color:#fff; border:none; border-radius:11px; cursor:pointer; background:linear-gradient(135deg,#6366f1,#8b5cf6); box-shadow:0 8px 24px rgba(99,102,241,0.42), inset 0 1px 0 rgba(255,255,255,0.22); transition:transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .25s, opacity .2s; display:flex; align-items:center; justify-content:center; min-height:46px; }
-      .na-btn:hover { box-shadow:0 10px 30px rgba(99,102,241,0.55), inset 0 1px 0 rgba(255,255,255,0.28); }
+      .na-input:focus { border-color:rgba(245,158,11,0.7); background:rgba(255,255,255,0.06); box-shadow:0 0 0 3px rgba(245,158,11,0.18), 0 0 22px rgba(245,158,11,0.18); }
+      .na-btn { position:relative; overflow:hidden; width:100%; padding:13px; margin-top:4px; font-size:14px; font-weight:600; color:#07070a; border:none; border-radius:11px; cursor:pointer; background:linear-gradient(135deg,#f59e0b,#fbbf24); box-shadow:0 8px 24px rgba(245,158,11,0.42), inset 0 1px 0 rgba(255,255,255,0.22); transition:transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .25s, opacity .2s; display:flex; align-items:center; justify-content:center; min-height:46px; }
+      .na-btn:hover { box-shadow:0 10px 30px rgba(245,158,11,0.55), inset 0 1px 0 rgba(255,255,255,0.28); }
       .na-btn:active { transform:scale(0.98); }
       .na-btn:disabled { opacity:.8; cursor:default; }
       .na-btn::after { content:''; position:absolute; top:0; left:-120%; width:80%; height:100%; background:linear-gradient(110deg, transparent, rgba(255,255,255,0.3), transparent); transform:skewX(-18deg); transition:left .6s ease; }
@@ -219,15 +219,15 @@ const wrap: React.CSSProperties = { minHeight: "100vh", display: "flex", alignIt
 const grid: React.CSSProperties = { position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "1fr 420px 1fr", gap: 24, alignItems: "center", maxWidth: 1200, width: "100%" };
 
 /* The sign-in card — elevated, glowing, clearly the focal point */
-const card: React.CSSProperties = { position: "relative", zIndex: 3, width: "100%", padding: "44px 38px", background: "rgba(17,20,38,0.72)", backdropFilter: "blur(28px)", border: "1px solid rgba(129,140,248,0.25)", borderRadius: 24, boxShadow: "0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04), 0 0 60px rgba(99,102,241,0.25)", textAlign: "center", overflow: "hidden" };
-const glowOrb: React.CSSProperties = { position: "absolute", top: -90, left: "50%", transform: "translateX(-50%)", width: 300, height: 180, background: "radial-gradient(circle, rgba(99,102,241,0.5), transparent 70%)", filter: "blur(34px)", pointerEvents: "none" };
-const logoRing: React.CSSProperties = { width: 76, height: 76, margin: "0 auto 20px", borderRadius: 19, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(99,102,241,0.14)", border: "1px solid rgba(129,140,248,0.35)", boxShadow: "0 0 34px rgba(99,102,241,0.5)", position: "relative", zIndex: 1 };
-const title: React.CSSProperties = { fontSize: 27, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 6px", background: "linear-gradient(135deg, #f1f5f9, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" };
+const card: React.CSSProperties = { position: "relative", zIndex: 3, width: "100%", padding: "44px 38px", background: "rgba(17,20,38,0.72)", backdropFilter: "blur(28px)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 24, boxShadow: "0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04), 0 0 60px rgba(245,158,11,0.2)", textAlign: "center", overflow: "hidden" };
+const glowOrb: React.CSSProperties = { position: "absolute", top: -90, left: "50%", transform: "translateX(-50%)", width: 300, height: 180, background: "radial-gradient(circle, rgba(245,158,11,0.4), transparent 70%)", filter: "blur(34px)", pointerEvents: "none" };
+const logoRing: React.CSSProperties = { width: 76, height: 76, margin: "0 auto 20px", borderRadius: 19, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)", boxShadow: "0 0 34px rgba(245,158,11,0.4)", position: "relative", zIndex: 1 };
+const title: React.CSSProperties = { fontSize: 27, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 6px", background: "linear-gradient(135deg, #f1f5f9, #f59e0b)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" };
 const subtitle: React.CSSProperties = { color: "#64748b", fontSize: 14, margin: "0 0 28px" };
 const form: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 16 };
 const errStyle: React.CSSProperties = { color: "#fca5a5", fontSize: 13, margin: 0, padding: "8px 12px", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 9 };
 const footer: React.CSSProperties = { color: "#64748b", fontSize: 13, marginTop: 22 };
-const link: React.CSSProperties = { color: "#a78bfa", textDecoration: "none", fontWeight: 600 };
+const link: React.CSSProperties = { color: "#f59e0b", textDecoration: "none", fontWeight: 600 };
 
 /* Ambient side scenes — NO card chrome, so they don't compete with the form */
 const scene: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 16, opacity: 0.92 };

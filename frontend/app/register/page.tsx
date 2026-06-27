@@ -104,24 +104,24 @@ const grid: React.CSSProperties = {
 const card: React.CSSProperties = {
   position: "relative", zIndex: 3, width: "100%", padding: "44px 38px",
   background: "rgba(17,20,38,0.72)", backdropFilter: "blur(28px)",
-  border: "1px solid rgba(129,140,248,0.25)", borderRadius: 24,
-  boxShadow: "0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04), 0 0 60px rgba(99,102,241,0.25)",
+  border: "1px solid rgba(245,158,11,0.25)", borderRadius: 24,
+  boxShadow: "0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04), 0 0 60px rgba(245,158,11,0.2)",
   textAlign: "center", overflow: "hidden",
 };
 const glowOrb: React.CSSProperties = {
   position: "absolute", top: -80, left: "50%", transform: "translateX(-50%)",
-  width: 260, height: 160, background: "radial-gradient(circle, rgba(139,92,246,0.4), transparent 70%)",
+  width: 260, height: 160, background: "radial-gradient(circle, rgba(245,158,11,0.35), transparent 70%)",
   filter: "blur(30px)", pointerEvents: "none",
 };
 const logoRing: React.CSSProperties = {
   width: 72, height: 72, margin: "0 auto 20px", borderRadius: 18,
   display: "flex", alignItems: "center", justifyContent: "center",
-  background: "rgba(99,102,241,0.12)", border: "1px solid rgba(129,140,248,0.3)",
-  boxShadow: "0 0 30px rgba(99,102,241,0.4)", position: "relative", zIndex: 1,
+  background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)",
+  boxShadow: "0 0 30px rgba(245,158,11,0.35)", position: "relative", zIndex: 1,
 };
 const title: React.CSSProperties = {
   fontSize: 26, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 6px",
-  background: "linear-gradient(135deg, #f1f5f9, #a78bfa)",
+  background: "linear-gradient(135deg, #f1f5f9, #f59e0b)",
   WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
 };
 const subtitle: React.CSSProperties = { color: "#64748b", fontSize: 14, margin: "0 0 28px" };
@@ -131,4 +131,4 @@ const errStyle: React.CSSProperties = {
   background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 9,
 };
 const footer: React.CSSProperties = { color: "#64748b", fontSize: 13, marginTop: 22 };
-const link: React.CSSProperties = { color: "#a78bfa", textDecoration: "none", fontWeight: 600 };
+const link: React.CSSProperties = { color: "#f59e0b", textDecoration: "none", fontWeight: 600 };

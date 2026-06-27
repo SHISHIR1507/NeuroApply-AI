@@ -18,10 +18,10 @@ export default function Aurora({ subtle = false }: { subtle?: boolean }) {
           filter: blur(72px);
           opacity: 0.6;
           background:
-            radial-gradient(38% 38% at 22% 28%, #6366f1 0%, transparent 60%),
-            radial-gradient(34% 34% at 80% 18%, #8b5cf6 0%, transparent 62%),
-            radial-gradient(44% 44% at 64% 82%, rgba(217,70,239,0.55) 0%, transparent 62%),
-            radial-gradient(40% 40% at 30% 74%, rgba(34,211,238,0.40) 0%, transparent 62%);
+            radial-gradient(38% 38% at 22% 28%, rgba(245,158,11,0.7) 0%, transparent 60%),
+            radial-gradient(34% 34% at 80% 18%, rgba(251,191,36,0.5) 0%, transparent 62%),
+            radial-gradient(44% 44% at 64% 82%, rgba(34,211,238,0.45) 0%, transparent 62%),
+            radial-gradient(40% 40% at 30% 74%, rgba(34,211,238,0.35) 0%, transparent 62%);
           animation: na-drift 18s ease-in-out infinite alternate;
         }
         .na-aurora-subtle { opacity: 0.28; filter: blur(90px); }
