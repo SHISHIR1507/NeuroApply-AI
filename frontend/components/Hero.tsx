@@ -156,39 +156,40 @@ export default function Hero() {
         initial={{ opacity: 0 }} animate={{ opacity: 1 }}
         transition={{ delay: 0.9, duration: 0.6 }}
         style={{
-          marginTop: 80, width: "100%", maxWidth: 1040,
-          position: "relative", height: 420,
+          marginTop: 64, width: "100%", maxWidth: 920,
+          position: "relative", height: 400,
         }}
       >
         {/* Glow beneath */}
         <div style={{
           position: "absolute",
-          bottom: 0, left: "15%", right: "15%", height: 80,
+          bottom: 0, left: "10%", right: "10%", height: 80,
           background: "radial-gradient(ellipse, rgba(245,158,11,0.22) 0%, transparent 70%)",
           filter: "blur(32px)", pointerEvents: "none",
         }} />
 
-        {/* Card 1 — Form autofill (left, lower) */}
+        {/* Card 1 — Form autofill (left) */}
         <div style={{
-          position: "absolute", left: "2%", top: 40,
+          position: "absolute", left: 0, top: 40,
           animation: "float-a 5.5s ease-in-out infinite",
           zIndex: 2,
         }}>
           <FormCard />
         </div>
 
-        {/* Card 2 — Extension popup (center-right, higher) */}
+        {/* Card 2 — Extension popup (center, highest) */}
         <div style={{
-          position: "absolute", left: "36%", top: 0,
+          position: "absolute", left: "50%", top: 0,
+          transform: "translateX(-50%)",
           animation: "float-b 6.5s ease-in-out infinite 1.1s",
           zIndex: 3,
         }}>
           <PopupCard />
         </div>
 
-        {/* Card 3 — ATS score ring (right, mid) */}
+        {/* Card 3 — ATS score ring (right, slightly lower) */}
         <div style={{
-          position: "absolute", right: "2%", top: 100,
+          position: "absolute", right: 0, top: 80,
           animation: "float-c 5s ease-in-out infinite 2.2s",
           zIndex: 2,
         }}>

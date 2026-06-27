@@ -17,8 +17,8 @@ export default function StatsBar() {
   return (
     <div ref={ref} style={{
       maxWidth: 1100,
-      margin: "0 auto 0",
-      padding: "0 24px 80px",
+      margin: "0 auto",
+      padding: "80px 24px 80px",
     }}>
       <motion.div
         initial={{ opacity: 0, y: 24 }}
