@@ -4,9 +4,7 @@ const API_ORIGIN =
   process.env.NEXT_PUBLIC_API_URL || "https://neuroapply-ai.onrender.com";
 const BASE_URL = `${API_ORIGIN}/api/v1`;
 
-function getToken() {
-  return typeof window !== "undefined" ? localStorage.getItem("token") : null;
-}
+import { getToken, clearSession } from "./auth";
 
 async function request<T>(
   path: string,
@@ -21,6 +19,14 @@ async function request<T>(
       ...(options.headers || {}),
     },
   });
+
+  if (res.status === 401) {
+    clearSession();
+    const current = typeof window !== "undefined" ? window.location.pathname : "";
+    const next = current && current !== "/login" ? `?next=${encodeURIComponent(current)}&reason=expired` : "?reason=expired";
+    if (typeof window !== "undefined") window.location.replace(`/login${next}`);
+    throw new Error("Session expired. Please sign in again.");
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Request failed" }));
@@ -60,6 +66,7 @@ export const api = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: form,
     }).then((r) => {
+      if (r.status === 401) { clearSession(); window.location.replace("/login?reason=expired"); throw new Error("Session expired"); }
       if (!r.ok) throw new Error("Upload failed");
       return r.json();
     });

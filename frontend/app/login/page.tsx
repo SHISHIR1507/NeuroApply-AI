@@ -1,18 +1,35 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
+import { setSession } from "@/lib/auth";
 import Aurora from "@/components/Aurora";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const nextPath = searchParams.get("next") || "/dashboard";
+  const expired = searchParams.get("reason") === "expired";
+
+  useEffect(() => {
+    if (expired) setError("Your session expired. Please sign in again.");
+  }, [expired]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,8 +37,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await api.login(email, password);
-      localStorage.setItem("token", data.access_token);
-      router.push("/dashboard");
+      setSession(data.access_token);
+      router.push(nextPath);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

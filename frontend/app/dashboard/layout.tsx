@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { clearSession } from "@/lib/auth";
 import Aurora from "@/components/Aurora";
 
 const NAV = [
@@ -16,19 +17,11 @@ const NAV = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (!localStorage.getItem("token")) router.replace("/login");
-    else setReady(true);
-  }, [router]);
 
   function logout() {
-    localStorage.removeItem("token");
+    clearSession();
     router.push("/login");
   }
-
-  if (!ready) return null;
 
   return (
     <div style={shell}>

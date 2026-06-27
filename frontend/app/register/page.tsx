@@ -1,20 +1,32 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
+import { setSession } from "@/lib/auth";
 import Aurora from "@/components/Aurora";
 import { Field, AuthStyles, ManualScene, AutoScene } from "../login/page";
 
 export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const nextPath = searchParams.get("next") || "/welcome";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,8 +34,8 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const data = await api.register(email, password, name);
-      localStorage.setItem("token", data.access_token);
-      router.push("/welcome");
+      setSession(data.access_token);
+      router.push(nextPath);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {

@@ -25,9 +25,8 @@ export default function WelcomePage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!localStorage.getItem("token")) { router.replace("/login"); return; }
     api.getProfile().then((p) => setName(p?.full_name?.split(" ")[0] ?? "")).catch(() => {});
-  }, [router]);
+  }, []);
 
   async function handleResume(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
