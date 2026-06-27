@@ -1,33 +1,73 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 
 const stats = [
-  { display: "<2s",  countTo: 2,    suffix: "s",   prefix: "<", label: "Average fill time",     isNum: true  },
-  { display: "6",    countTo: 6,    suffix: "",    prefix: "",  label: "Resolution layers",      isNum: true  },
-  { display: "1ms",  countTo: 1,    suffix: "ms",  prefix: "",  label: "Cached field latency",   isNum: true  },
-  { display: "100%", countTo: 100,  suffix: "%",   prefix: "",  label: "Easy Apply compatible",  isNum: true  },
+  { value: "<2s",  label: "Average fill time"    },
+  { value: "6",    label: "Resolution layers"     },
+  { value: "1ms",  label: "Cached field latency"  },
+  { value: "100%", label: "Easy Apply compatible" },
 ];
 
-function CountUp({ to, suffix, prefix, active }: { to: number; suffix: string; prefix: string; active: boolean }) {
-  const [val, setVal] = useState(0);
+/* Rolls a single digit upward like a slot machine.
+   Non-digit characters (< > % s m) just appear statically. */
+function DigitRoller({ char, delay, active }: { char: string; delay: number; active: boolean }) {
+  const DIGITS = ["0","1","2","3","4","5","6","7","8","9"];
+  const idx = DIGITS.indexOf(char);
 
-  useEffect(() => {
-    if (!active) return;
-    const duration = 1200;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const progress = Math.min((now - start) / duration, 1);
-      // ease out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setVal(Math.round(eased * to));
-      if (progress < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, [active, to]);
+  if (idx === -1) {
+    // prefix / suffix — fade in
+    return (
+      <span style={{
+        opacity: active ? 1 : 0,
+        transition: `opacity 0.4s ease ${delay}ms`,
+        display: "inline-block",
+      }}>{char}</span>
+    );
+  }
 
-  return <span>{prefix}{val}{suffix}</span>;
+  return (
+    <span style={{
+      display: "inline-block",
+      overflow: "hidden",
+      height: "1.1em",
+      verticalAlign: "top",
+    }}>
+      <span style={{
+        display: "flex",
+        flexDirection: "column",
+        lineHeight: "1.1em",
+        /* Each digit = 10% of the 10-item column height.
+           translateY(-idx*10%) shows the target digit. */
+        transform: active ? `translateY(-${idx * 10}%)` : "translateY(0%)",
+        transition: active
+          ? `transform 0.9s cubic-bezier(0.34, 1.2, 0.64, 1) ${delay}ms`
+          : "none",
+      }}>
+        {DIGITS.map(d => (
+          <span key={d} style={{ display: "block", height: "1.1em" }}>{d}</span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
+function OdometerValue({ value, active }: { value: string; active: boolean }) {
+  return (
+    <div style={{
+      fontSize: "clamp(32px, 4vw, 48px)",
+      fontWeight: 800, letterSpacing: "-0.04em",
+      background: "linear-gradient(135deg, #f59e0b, #fbbf24)",
+      WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+      lineHeight: 1, marginBottom: 8,
+      display: "flex", justifyContent: "center", alignItems: "baseline",
+    }}>
+      {value.split("").map((char, i) => (
+        <DigitRoller key={i} char={char} delay={i * 80} active={active} />
+      ))}
+    </div>
+  );
 }
 
 export default function StatsBar() {
@@ -35,11 +75,7 @@ export default function StatsBar() {
   const inView = useInView(ref, { once: true, margin: "-60px" });
 
   return (
-    <div ref={ref} style={{
-      maxWidth: 1100,
-      margin: "0 auto",
-      padding: "80px 24px 80px",
-    }}>
+    <div ref={ref} style={{ maxWidth: 1100, margin: "0 auto", padding: "80px 24px" }}>
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -49,8 +85,7 @@ export default function StatsBar() {
           gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
           gap: 1,
           background: "rgba(255,255,255,0.06)",
-          borderRadius: 20,
-          overflow: "hidden",
+          borderRadius: 20, overflow: "hidden",
           border: "1px solid rgba(255,255,255,0.08)",
         }}
       >
@@ -68,22 +103,12 @@ export default function StatsBar() {
               position: "relative", overflow: "hidden",
             }}
           >
-            {/* Subtle amber glow on hover */}
             <div style={{
               position: "absolute", inset: 0,
               background: "radial-gradient(ellipse at center, rgba(245,158,11,0.04) 0%, transparent 70%)",
               pointerEvents: "none",
             }} />
-            <div style={{
-              fontSize: "clamp(32px, 4vw, 48px)",
-              fontWeight: 800,
-              letterSpacing: "-0.04em",
-              background: "linear-gradient(135deg, #f59e0b, #fbbf24)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-              lineHeight: 1, marginBottom: 8,
-            }}>
-              <CountUp to={s.countTo} suffix={s.suffix} prefix={s.prefix} active={inView} />
-            </div>
+            <OdometerValue value={s.value} active={inView} />
             <div style={{ fontSize: 13, color: "#52525b", fontWeight: 500 }}>{s.label}</div>
           </motion.div>
         ))}

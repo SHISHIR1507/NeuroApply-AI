@@ -2,6 +2,12 @@
 
 import { motion } from "framer-motion";
 import { AddToChromeBtn } from "./Navbar";
+import { useScramble } from "./ScrambleText";
+
+function ScrambleWord({ text, delay }: { text: string; delay: number }) {
+  const output = useScramble(text, delay, 28);
+  return <>{output}</>;
+}
 
 /* ─── word-by-word reveal ─── */
 const words = [
@@ -99,8 +105,11 @@ export default function Hero() {
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
+              fontVariantNumeric: "tabular-nums",
             }}
-          >{w.text}</motion.span>
+          >
+            <ScrambleWord text={w.text} delay={i * 90 + 200} />
+          </motion.span>
         ))}
       </h1>
 
