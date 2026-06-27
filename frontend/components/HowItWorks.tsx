@@ -14,7 +14,7 @@ const steps = [
         <circle cx="12" cy="7" r="4" />
       </svg>
     ),
-    color: "#6366f1",
+    color: "#f59e0b",
   },
   {
     number: "02",
@@ -26,18 +26,18 @@ const steps = [
         <path d="M8 21h8M12 17v4" />
       </svg>
     ),
-    color: "#8b5cf6",
+    color: "#22d3ee",
   },
   {
     number: "03",
     title: "Watch it fill everything",
-    description: "The AI chat widget slides in, fills every field in under 2 seconds, and tells you exactly what it did. You review, hit Submit.",
+    description: "Fields autofill in under 2 seconds. Review the ATS match score, tweak anything you want, then hit Submit yourself.",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
       </svg>
     ),
-    color: "#4ade80",
+    color: "#22c55e",
   },
 ];
 
@@ -51,7 +51,6 @@ export default function HowItWorks() {
       maxWidth: 1100,
       margin: "0 auto",
     }}>
-      {/* Section label */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -60,35 +59,33 @@ export default function HowItWorks() {
       >
         <span style={{
           fontSize: 12, fontWeight: 600, letterSpacing: "0.12em",
-          textTransform: "uppercase", color: "#6366f1",
+          textTransform: "uppercase", color: "#f59e0b",
         }}>How it works</span>
         <h2 style={{
           fontSize: "clamp(32px, 4vw, 52px)",
           fontWeight: 800, letterSpacing: "-0.03em",
           margin: "12px 0 16px",
-          background: "linear-gradient(135deg, #f1f5f9 0%, #64748b 100%)",
+          background: "linear-gradient(135deg, #fafafa 0%, #71717a 100%)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
         }}>
           Three steps. Zero friction.
         </h2>
-        <p style={{ fontSize: 17, color: "#475569", maxWidth: 520, margin: "0 auto", lineHeight: 1.6 }}>
+        <p style={{ fontSize: 17, color: "#52525b", maxWidth: 520, margin: "0 auto", lineHeight: 1.6 }}>
           From profile to submitted application in seconds — not hours.
         </p>
       </motion.div>
 
-      {/* Steps */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
         gap: 24,
         position: "relative",
       }}>
-        {/* Connector line (desktop) */}
+        {/* Connector line */}
         <div style={{
           position: "absolute",
-          top: 56, left: "16%", right: "16%",
-          height: 1,
-          background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.3) 20%, rgba(139,92,246,0.3) 80%, transparent)",
+          top: 56, left: "16%", right: "16%", height: 1,
+          background: "linear-gradient(90deg, transparent, rgba(245,158,11,0.25) 20%, rgba(34,211,238,0.25) 80%, transparent)",
           pointerEvents: "none",
         }} className="hide-mobile" />
 
@@ -119,20 +116,17 @@ export default function HowItWorks() {
               (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
             }}
           >
-            {/* Corner glow */}
             <div style={{
               position: "absolute", top: 0, left: 0, width: 180, height: 180,
               background: `radial-gradient(circle at top left, ${step.color}14 0%, transparent 70%)`,
               pointerEvents: "none",
             }} />
 
-            {/* Step number */}
             <div style={{
               fontSize: 11, fontWeight: 700, letterSpacing: "0.1em",
               color: step.color, marginBottom: 20, opacity: 0.7,
             }}>{step.number}</div>
 
-            {/* Icon */}
             <div style={{
               width: 52, height: 52, borderRadius: 14,
               background: `${step.color}15`,
@@ -143,10 +137,10 @@ export default function HowItWorks() {
               {step.icon}
             </div>
 
-            <h3 style={{ fontSize: 19, fontWeight: 700, color: "#f1f5f9", margin: "0 0 10px", letterSpacing: "-0.02em" }}>
+            <h3 style={{ fontSize: 19, fontWeight: 700, color: "#fafafa", margin: "0 0 10px", letterSpacing: "-0.02em" }}>
               {step.title}
             </h3>
-            <p style={{ fontSize: 14.5, color: "#64748b", lineHeight: 1.65, margin: 0 }}>
+            <p style={{ fontSize: 14.5, color: "#52525b", lineHeight: 1.65, margin: 0 }}>
               {step.description}
             </p>
           </motion.div>

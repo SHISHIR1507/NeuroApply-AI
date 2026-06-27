@@ -12,60 +12,63 @@ const features = [
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
       </svg>
     ),
-    accent: "#6366f1",
+    accent: "#f59e0b",
+    span: "col",
   },
   {
-    title: "AI chat widget",
-    description: "A live chat overlay guides you through each step — shows field status, resolves ambiguity, and stays out of your way.",
+    title: "ATS score checker",
+    description: "Paste a JD and see a live circular match score with missing-keyword chips — before you apply.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        <circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" />
       </svg>
     ),
-    accent: "#8b5cf6",
+    accent: "#22c55e",
+    span: "col",
   },
   {
     title: "Learns from you",
-    description: "Corrected a field? That correction is saved and reused across all future applications automatically.",
+    description: "Every correction you make is saved and automatically reused across all future applications. The more you use it, the sharper it gets.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
       </svg>
     ),
-    accent: "#4ade80",
+    accent: "#22d3ee",
+    span: "row",
   },
   {
     title: "Multi-step forms",
-    description: "Click Next and fields auto-fill on every step. NeuroApply detects page changes and refills in real time.",
+    description: "Detects page changes and refills on every step, including the Review page.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="9 11 12 14 22 4" />
-        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        <polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      </svg>
+    ),
+    accent: "#fbbf24",
+    span: "col",
+  },
+  {
+    title: "Lightning cache",
+    description: "First fill uses AI. Every repeat is served locally — under 1 ms.",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
       </svg>
     ),
     accent: "#f59e0b",
+    span: "col",
   },
   {
-    title: "Lightning fast cache",
-    description: "First fill uses AI. Every repeat application is served from local cache — answers return in under 1ms.",
+    title: "Never auto-submits",
+    description: "NeuroApply fills fields and advances steps. You always hit the final Submit yourself. Hard constraint, not a setting.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       </svg>
     ),
-    accent: "#06b6d4",
-  },
-  {
-    title: "Manual fill button",
-    description: 'Extension not auto-detecting? Hit "Fill this page" in the popup for an instant override that works every time.',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-      </svg>
-    ),
-    accent: "#f43f5e",
+    accent: "#22c55e",
+    span: "row",
   },
 ];
 
@@ -87,59 +90,81 @@ export default function Features() {
       >
         <span style={{
           fontSize: 12, fontWeight: 600, letterSpacing: "0.12em",
-          textTransform: "uppercase", color: "#6366f1",
+          textTransform: "uppercase", color: "#f59e0b",
         }}>Features</span>
         <h2 style={{
           fontSize: "clamp(32px, 4vw, 52px)",
           fontWeight: 800, letterSpacing: "-0.03em",
           margin: "12px 0 16px",
-          background: "linear-gradient(135deg, #f1f5f9 0%, #64748b 100%)",
+          background: "linear-gradient(135deg, #fafafa 0%, #71717a 100%)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
         }}>
           Everything you need. Nothing you don't.
         </h2>
-        <p style={{ fontSize: 17, color: "#475569", maxWidth: 500, margin: "0 auto", lineHeight: 1.6 }}>
+        <p style={{ fontSize: 17, color: "#52525b", maxWidth: 500, margin: "0 auto", lineHeight: 1.6 }}>
           Built for speed, reliability, and the specific hell of LinkedIn Easy Apply forms.
         </p>
       </motion.div>
 
+      {/* Bento grid */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-        gap: 20,
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gridTemplateRows: "auto auto",
+        gap: 16,
       }}>
-        {features.map((f, i) => (
-          <FeatureCard key={f.title} feature={f} index={i} inView={inView} />
+        {/* Row 1: col | col | row (wide) */}
+        {[0,1].map(i => (
+          <FeatureCard key={features[i].title} feature={features[i]} index={i} inView={inView} />
+        ))}
+        {/* "Learns from you" spans 1 col but gets taller treatment */}
+        <FeatureCard key={features[2].title} feature={features[2]} index={2} inView={inView} tall />
+
+        {/* Row 2: wide | col | col */}
+        <FeatureCard key={features[5].title} feature={features[5]} index={5} inView={inView} wide />
+        {[3,4].map(i => (
+          <FeatureCard key={features[i].title} feature={features[i]} index={i} inView={inView} />
         ))}
       </div>
+
+      <style>{`
+        @media (max-width: 700px) {
+          #features > div:last-child { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </section>
   );
 }
 
-function FeatureCard({ feature, index, inView }: {
-  feature: typeof features[0]; index: number; inView: boolean;
+function FeatureCard({ feature, index, inView, wide = false, tall = false }: {
+  feature: typeof features[0]; index: number; inView: boolean; wide?: boolean; tall?: boolean;
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 32 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ delay: index * 0.08, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ delay: index * 0.07, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       style={{
-        padding: 28,
-        borderRadius: 16,
+        gridColumn: wide ? "span 2" : undefined,
+        padding: wide ? "32px 36px" : tall ? "32px 28px" : "28px",
+        borderRadius: 20,
         border: "1px solid rgba(255,255,255,0.07)",
         background: "rgba(255,255,255,0.02)",
         position: "relative",
         overflow: "hidden",
         transition: "border-color 0.3s, background 0.3s, transform 0.3s, box-shadow 0.3s",
         cursor: "default",
+        display: "flex",
+        flexDirection: wide ? "row" : "column",
+        gap: wide ? 28 : 0,
+        alignItems: wide ? "center" : "flex-start",
       }}
       onMouseEnter={e => {
         const el = e.currentTarget as HTMLElement;
-        el.style.borderColor = `${feature.accent}35`;
-        el.style.background = `${feature.accent}05`;
+        el.style.borderColor = `${feature.accent}40`;
+        el.style.background = `${feature.accent}06`;
         el.style.transform = "translateY(-3px)";
-        el.style.boxShadow = `0 16px 48px rgba(0,0,0,0.3)`;
+        el.style.boxShadow = `0 20px 56px rgba(0,0,0,0.35)`;
       }}
       onMouseLeave={e => {
         const el = e.currentTarget as HTMLElement;
@@ -149,28 +174,34 @@ function FeatureCard({ feature, index, inView }: {
         el.style.boxShadow = "none";
       }}
     >
+      {/* Glow */}
       <div style={{
-        position: "absolute", top: 0, right: 0, width: 120, height: 120,
+        position: "absolute", top: 0, right: 0, width: 160, height: 160,
         background: `radial-gradient(circle at top right, ${feature.accent}12 0%, transparent 70%)`,
         pointerEvents: "none",
       }} />
 
+      {/* Icon */}
       <div style={{
-        width: 44, height: 44, borderRadius: 12,
+        width: 48, height: 48, borderRadius: 13,
         background: `${feature.accent}15`,
         border: `1px solid ${feature.accent}28`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        color: feature.accent, marginBottom: 18,
+        color: feature.accent,
+        flexShrink: 0,
+        marginBottom: wide ? 0 : 18,
       }}>
         {feature.icon}
       </div>
 
-      <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f1f5f9", margin: "0 0 8px", letterSpacing: "-0.015em" }}>
-        {feature.title}
-      </h3>
-      <p style={{ fontSize: 14, color: "#64748b", lineHeight: 1.65, margin: 0 }}>
-        {feature.description}
-      </p>
+      <div>
+        <h3 style={{ fontSize: wide ? 19 : 16, fontWeight: 700, color: "#fafafa", margin: "0 0 8px", letterSpacing: "-0.015em" }}>
+          {feature.title}
+        </h3>
+        <p style={{ fontSize: wide ? 15 : 14, color: "#52525b", lineHeight: 1.65, margin: 0 }}>
+          {feature.description}
+        </p>
+      </div>
     </motion.div>
   );
 }

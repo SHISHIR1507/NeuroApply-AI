@@ -51,12 +51,12 @@ export default function StatsBar() {
               fontSize: "clamp(32px, 4vw, 48px)",
               fontWeight: 800,
               letterSpacing: "-0.04em",
-              background: "linear-gradient(135deg, #6366f1, #a78bfa)",
+              background: "linear-gradient(135deg, #f59e0b, #fbbf24)",
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
               lineHeight: 1,
               marginBottom: 8,
             }}>{s.value}</div>
-            <div style={{ fontSize: 13, color: "#64748b", fontWeight: 500 }}>{s.label}</div>
+            <div style={{ fontSize: 13, color: "#52525b", fontWeight: 500 }}>{s.label}</div>
           </motion.div>
         ))}
       </motion.div>

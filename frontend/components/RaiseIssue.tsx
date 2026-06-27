@@ -49,7 +49,7 @@ export default function RaiseIssue({ variant = "button" }: { variant?: "button" 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)} style={overlay}>
             <motion.div initial={{ opacity: 0, y: 24, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} onClick={(e) => e.stopPropagation()} style={modal}>
-              <div style={{ position: "absolute", top: -50, left: "50%", transform: "translateX(-50%)", width: 200, height: 120, background: "radial-gradient(circle, rgba(99,102,241,0.35), transparent 70%)", filter: "blur(28px)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", top: -50, left: "50%", transform: "translateX(-50%)", width: 200, height: 120, background: "radial-gradient(circle, rgba(245,158,11,0.25), transparent 70%)", filter: "blur(28px)", pointerEvents: "none" }} />
 
               {state === "sent" ? (
                 <div style={{ textAlign: "center", padding: "30px 8px" }}>
@@ -91,11 +91,11 @@ export default function RaiseIssue({ variant = "button" }: { variant?: "button" 
                   border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#f1f5f9; outline:none; font-family:inherit;
                   transition:border-color .2s, box-shadow .2s; }
                 .na-ri-input::placeholder { color:#5b6678; }
-                .na-ri-input:focus { border-color:rgba(129,140,248,0.6); box-shadow:0 0 0 3px rgba(129,140,248,0.15); }
-                .na-ri-submit { width:100%; padding:12px; font-size:14px; font-weight:600; color:#fff; border:none; border-radius:11px;
-                  cursor:pointer; background:linear-gradient(135deg,#6366f1,#8b5cf6); box-shadow:0 8px 22px rgba(99,102,241,0.4);
+                .na-ri-input:focus { border-color:rgba(245,158,11,0.5); box-shadow:0 0 0 3px rgba(245,158,11,0.12); }
+                .na-ri-submit { width:100%; padding:12px; font-size:14px; font-weight:600; color:#07070a; border:none; border-radius:11px;
+                  cursor:pointer; background:linear-gradient(135deg,#f59e0b,#fbbf24); box-shadow:0 8px 22px rgba(245,158,11,0.35);
                   transition:transform .15s, box-shadow .25s, opacity .2s; }
-                .na-ri-submit:hover { box-shadow:0 10px 28px rgba(99,102,241,0.55); }
+                .na-ri-submit:hover { box-shadow:0 10px 28px rgba(245,158,11,0.5); }
                 .na-ri-submit:active { transform:scale(0.98); }
                 .na-ri-submit:disabled { opacity:.55; cursor:default; }
               `}</style>
@@ -111,8 +111,8 @@ function BugIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill
 
 const triggerBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 13.5, fontWeight: 500, padding: "9px 16px", borderRadius: 11, cursor: "pointer", transition: "all .2s" };
 const overlay: React.CSSProperties = { position: "fixed", inset: 0, zIndex: 200, background: "rgba(2,6,18,0.7)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 };
-const modal: React.CSSProperties = { position: "relative", overflow: "hidden", width: "100%", maxWidth: 460, padding: "28px 26px", background: "rgba(17,20,38,0.92)", backdropFilter: "blur(24px)", border: "1px solid rgba(129,140,248,0.22)", borderRadius: 22, boxShadow: "0 40px 100px rgba(0,0,0,0.6)" };
+const modal: React.CSSProperties = { position: "relative", overflow: "hidden", width: "100%", maxWidth: 460, padding: "28px 26px", background: "rgba(10,10,14,0.96)", backdropFilter: "blur(24px)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 22, boxShadow: "0 40px 100px rgba(0,0,0,0.7)" };
 const closeBtn: React.CSSProperties = { background: "rgba(255,255,255,0.06)", border: "none", color: "#94a3b8", width: 28, height: 28, borderRadius: 8, fontSize: 18, cursor: "pointer", lineHeight: 1 };
 const catChip: React.CSSProperties = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 12.5, padding: "6px 12px", borderRadius: 9, cursor: "pointer", transition: "all .15s" };
-const catChipActive: React.CSSProperties = { background: "rgba(99,102,241,0.18)", border: "1px solid rgba(129,140,248,0.45)", color: "#c7d2fe" };
+const catChipActive: React.CSSProperties = { background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.4)", color: "#fbbf24" };
 const sentCheck: React.CSSProperties = { width: 56, height: 56, margin: "0 auto", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)" };

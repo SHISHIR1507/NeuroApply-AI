@@ -16,7 +16,7 @@ const SOURCE_COLORS: Record<string, string> = {
   profile: "#4ade80",
   history: "#60a5fa",
   default_rule: "#f59e0b",
-  llm_infer: "#a78bfa",
+  llm_infer: "#22d3ee",
   cache: "#34d399",
 };
 
@@ -63,16 +63,16 @@ export default function Demo() {
       >
         <span style={{
           fontSize: 12, fontWeight: 600, letterSpacing: "0.12em",
-          textTransform: "uppercase", color: "#6366f1",
+          textTransform: "uppercase", color: "#f59e0b",
         }}>Live demo</span>
         <h2 style={{
           fontSize: "clamp(32px, 4vw, 52px)",
           fontWeight: 800, letterSpacing: "-0.03em",
           margin: "12px 0 16px",
-          background: "linear-gradient(135deg, #f1f5f9 0%, #64748b 100%)",
+          background: "linear-gradient(135deg, #fafafa 0%, #71717a 100%)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
         }}>See the resolution engine in action</h2>
-        <p style={{ fontSize: 17, color: "#475569", maxWidth: 500, margin: "0 auto", lineHeight: 1.6 }}>
+        <p style={{ fontSize: 17, color: "#52525b", maxWidth: 500, margin: "0 auto", lineHeight: 1.6 }}>
           Each field goes through a 6-layer pipeline. Most resolve in milliseconds.
         </p>
       </motion.div>
@@ -100,7 +100,7 @@ export default function Demo() {
             <div style={{ width: 12, height: 12, borderRadius: "50%", background: "rgba(255,255,255,0.1)" }} />
             <div style={{ width: 12, height: 12, borderRadius: "50%", background: "rgba(255,255,255,0.1)" }} />
           </div>
-          <span style={{ fontSize: 12, color: "#475569", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 12, color: "#52525b", fontFamily: "monospace" }}>
             NeuroApply · Field Resolution Engine
           </span>
           <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
@@ -109,8 +109,8 @@ export default function Demo() {
               disabled={running}
               style={{
                 padding: "6px 16px", borderRadius: 8,
-                background: running ? "rgba(99,102,241,0.15)" : "linear-gradient(135deg, #6366f1, #8b5cf6)",
-                color: "#fff", border: "none", cursor: running ? "default" : "pointer",
+                background: running ? "rgba(245,158,11,0.15)" : "linear-gradient(135deg, #f59e0b, #fbbf24)",
+                color: "#07070a", border: "none", cursor: running ? "default" : "pointer",
                 fontSize: 12, fontWeight: 600,
                 transition: "opacity 0.2s",
                 opacity: running ? 0.6 : 1,
@@ -140,7 +140,7 @@ export default function Demo() {
             marginBottom: 8,
           }}>
             {["Field", "Source", "Value", "Time"].map(h => (
-              <span key={h} style={{ fontSize: 11, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{h}</span>
+              <span key={h} style={{ fontSize: 11, fontWeight: 600, color: "#52525b", textTransform: "uppercase", letterSpacing: "0.08em" }}>{h}</span>
             ))}
           </div>
 
@@ -179,7 +179,7 @@ export default function Demo() {
                     <span style={{ fontSize: 13, color: "#94a3b8", fontFamily: "monospace" }}>
                       {field.value}
                     </span>
-                    <span style={{ fontSize: 12, color: field.ms > 100 ? "#a78bfa" : "#4ade80" }}>
+                    <span style={{ fontSize: 12, color: field.ms > 100 ? "#22d3ee" : "#4ade80" }}>
                       {field.ms}ms
                     </span>
                   </motion.div>
@@ -218,9 +218,9 @@ export default function Demo() {
                   <path d="M20 6L9 17l-5-5" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span style={{ fontSize: 14, color: "#94a3b8" }}>
-                  All <strong style={{ color: "#f1f5f9" }}>6 fields</strong> resolved ·{" "}
+                  All <strong style={{ color: "#fafafa" }}>6 fields</strong> resolved ·{" "}
                   <strong style={{ color: "#4ade80" }}>5 from cache/profile</strong> ·{" "}
-                  <strong style={{ color: "#a78bfa" }}>1 via AI</strong>
+                  <strong style={{ color: "#22d3ee" }}>1 via AI</strong>
                 </span>
               </motion.div>
             )}
@@ -236,7 +236,7 @@ export default function Demo() {
           {Object.entries(SOURCE_LABELS).map(([key, label]) => (
             <div key={key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: SOURCE_COLORS[key] }} />
-              <span style={{ fontSize: 12, color: "#475569" }}>{label}</span>
+              <span style={{ fontSize: 12, color: "#52525b" }}>{label}</span>
             </div>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
+import Marquee from "@/components/Marquee";
 import StatsBar from "@/components/StatsBar";
 import HowItWorks from "@/components/HowItWorks";
 import Features from "@/components/Features";
@@ -14,6 +15,7 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <Hero />
+        <Marquee />
         <StatsBar />
         <HowItWorks />
         <Features />
