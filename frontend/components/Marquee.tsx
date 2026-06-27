@@ -1,97 +1,65 @@
 "use client";
 
-const tags = [
-  { icon: "⚡", text: "Fills in 2 seconds" },
-  { icon: "🔒", text: "Never auto-submits" },
-  { icon: "🧠", text: "Resume-aware AI" },
-  { icon: "✦",  text: "ATS score checker" },
-  { icon: "↩",  text: "Manual override" },
-  { icon: "📋", text: "Answer history" },
-  { icon: "🔄", text: "Multi-step forms" },
-  { icon: "📍", text: "LinkedIn Easy Apply" },
-  { icon: "🎯", text: "Field-level accuracy" },
-  { icon: "⚙️", text: "Works on page load" },
-  { icon: "🆓", text: "100 % free forever" },
-  { icon: "🛡️", text: "Safe by design" },
+import { useEffect, useState } from "react";
+
+const ITEMS = [
+  { icon: "⚡", text: "Fills LinkedIn Easy Apply in under 2 seconds" },
+  { icon: "🧠", text: "Resume-aware — answers questions from your profile" },
+  { icon: "🔒", text: "Never auto-submits — you stay in control" },
+  { icon: "🎯", text: "ATS match score before you apply" },
+  { icon: "↩",  text: "Manual edits saved and reused automatically" },
+  { icon: "🆓", text: "100 % free — no account required to install" },
 ];
 
-function Tag({ icon, text }: { icon: string; text: string }) {
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 8,
-      padding: "9px 20px",
-      border: "1px solid rgba(245,158,11,0.2)",
-      borderRadius: 100,
-      background: "rgba(245,158,11,0.05)",
-      fontSize: 13, fontWeight: 500,
-      color: "#a1a1aa",
-      whiteSpace: "nowrap",
-      flexShrink: 0,
-    }}>
-      <span style={{ fontSize: 15 }}>{icon}</span>
-      {text}
-    </span>
-  );
-}
-
 export default function Marquee() {
-  const double = [...tags, ...tags];
+  const [idx, setIdx] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setIdx(i => (i + 1) % ITEMS.length);
+        setVisible(true);
+      }, 350);
+    }, 2800);
+    return () => clearInterval(id);
+  }, []);
+
+  const item = ITEMS[idx];
 
   return (
-    <section style={{
-      padding: "48px 0",
+    <div style={{
+      padding: "28px 24px",
       borderTop: "1px solid rgba(255,255,255,0.05)",
       borderBottom: "1px solid rgba(255,255,255,0.05)",
-      overflow: "hidden",
-      position: "relative",
+      display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
     }}>
-      {/* Fade left */}
       <div style={{
-        position: "absolute", left: 0, top: 0, bottom: 0, width: 140, zIndex: 2,
-        background: "linear-gradient(to right, #07070a, transparent)",
-        pointerEvents: "none",
-      }} />
-      {/* Fade right */}
-      <div style={{
-        position: "absolute", right: 0, top: 0, bottom: 0, width: 140, zIndex: 2,
-        background: "linear-gradient(to left, #07070a, transparent)",
-        pointerEvents: "none",
-      }} />
-
-      {/* Row 1 — scrolls left */}
-      <div style={{ display: "flex", marginBottom: 14, gap: 12, willChange: "transform" }}>
-        <div style={{
-          display: "flex", gap: 12, animation: "marquee-left 28s linear infinite",
-          willChange: "transform",
-        }}>
-          {double.map((t, i) => <Tag key={i} {...t} />)}
-        </div>
+        display: "flex", alignItems: "center", gap: 12,
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(6px)",
+        transition: "opacity 0.35s ease, transform 0.35s ease",
+      }}>
+        <span style={{
+          width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+          background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)",
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+        }}>{item.icon}</span>
+        <span style={{ fontSize: 15, fontWeight: 600, color: "#d4d4d8" }}>{item.text}</span>
       </div>
 
-      {/* Row 2 — scrolls right, offset palette */}
-      <div style={{ display: "flex", gap: 12, willChange: "transform" }}>
-        <div style={{
-          display: "flex", gap: 12, animation: "marquee-right 34s linear infinite",
-          willChange: "transform",
-        }}>
-          {[...double].reverse().map((t, i) => (
-            <span key={i} style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "9px 20px",
-              border: "1px solid rgba(34,211,238,0.15)",
-              borderRadius: 100,
-              background: "rgba(34,211,238,0.04)",
-              fontSize: 13, fontWeight: 500,
-              color: "#71717a",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}>
-              <span style={{ fontSize: 15 }}>{t.icon}</span>
-              {t.text}
-            </span>
-          ))}
-        </div>
+      {/* Dot indicators */}
+      <div style={{ display: "flex", gap: 5 }}>
+        {ITEMS.map((_, i) => (
+          <div key={i} style={{
+            height: 3, borderRadius: 99,
+            width: i === idx ? 20 : 5,
+            background: i === idx ? "#f59e0b" : "rgba(255,255,255,0.1)",
+            transition: "all 0.35s ease",
+          }} />
+        ))}
       </div>
-    </section>
+    </div>
   );
 }

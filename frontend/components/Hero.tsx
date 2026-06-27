@@ -156,44 +156,52 @@ export default function Hero() {
         initial={{ opacity: 0 }} animate={{ opacity: 1 }}
         transition={{ delay: 0.9, duration: 0.6 }}
         style={{
-          marginTop: 64, width: "100%", maxWidth: 920,
-          position: "relative", height: 400,
+          marginTop: 64, width: "100%", maxWidth: 980,
+          position: "relative",
         }}
       >
         {/* Glow beneath */}
         <div style={{
           position: "absolute",
-          bottom: 0, left: "10%", right: "10%", height: 80,
+          bottom: -20, left: "10%", right: "10%", height: 80,
           background: "radial-gradient(ellipse, rgba(245,158,11,0.22) 0%, transparent 70%)",
-          filter: "blur(32px)", pointerEvents: "none",
+          filter: "blur(32px)", pointerEvents: "none", zIndex: 0,
         }} />
 
-        {/* Card 1 — Form autofill (left) */}
+        {/* Flex row — no absolute positioning, no clipping */}
         <div style={{
-          position: "absolute", left: 0, top: 40,
-          animation: "float-a 5.5s ease-in-out infinite",
-          zIndex: 2,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          gap: 20,
+          padding: "0 16px 40px",
         }}>
-          <FormCard />
-        </div>
+          {/* Card 1 — Form autofill (raised by 40px via marginTop offset) */}
+          <div style={{
+            marginTop: 40, flexShrink: 0,
+            animation: "float-a 5.5s ease-in-out infinite",
+            zIndex: 2, position: "relative",
+          }}>
+            <FormCard />
+          </div>
 
-        {/* Card 2 — Extension popup (center, highest) */}
-        <div style={{
-          position: "absolute", left: "50%", top: 0,
-          transform: "translateX(-50%)",
-          animation: "float-b 6.5s ease-in-out infinite 1.1s",
-          zIndex: 3,
-        }}>
-          <PopupCard />
-        </div>
+          {/* Card 2 — Extension popup (top-most) */}
+          <div style={{
+            marginTop: 0, flexShrink: 0,
+            animation: "float-b 6.5s ease-in-out infinite 1.1s",
+            zIndex: 3, position: "relative",
+          }}>
+            <PopupCard />
+          </div>
 
-        {/* Card 3 — ATS score ring (right, slightly lower) */}
-        <div style={{
-          position: "absolute", right: 0, top: 80,
-          animation: "float-c 5s ease-in-out infinite 2.2s",
-          zIndex: 2,
-        }}>
-          <ATSCard />
+          {/* Card 3 — ATS score (slightly lower) */}
+          <div style={{
+            marginTop: 80, flexShrink: 0,
+            animation: "float-c 5s ease-in-out infinite 2.2s",
+            zIndex: 2, position: "relative",
+          }}>
+            <ATSCard />
+          </div>
         </div>
       </motion.div>
     </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 
 const features = [
@@ -156,11 +156,23 @@ function FeatureCard({ feature, index, inView, style, wide, full }: {
   wide?: boolean;
   full?: boolean;
 }) {
+  const [spotlight, setSpotlight] = useState({ x: 0, y: 0, visible: false });
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  function handleMouseMove(e: React.MouseEvent) {
+    const rect = cardRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setSpotlight({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
+  }
+
   return (
     <motion.div
+      ref={cardRef}
       initial={{ opacity: 0, y: 28 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ delay: index * 0.07, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setSpotlight(s => ({ ...s, visible: false }))}
       style={{
         ...style,
         padding: full ? "28px 36px" : "28px",
@@ -191,6 +203,18 @@ function FeatureCard({ feature, index, inView, style, wide, full }: {
         el.style.boxShadow = "none";
       }}
     >
+      {/* Cursor spotlight */}
+      <div style={{
+        position: "absolute",
+        left: spotlight.x - 80, top: spotlight.y - 80,
+        width: 160, height: 160,
+        background: `radial-gradient(circle, ${feature.accent}20 0%, transparent 70%)`,
+        borderRadius: "50%",
+        pointerEvents: "none",
+        opacity: spotlight.visible ? 1 : 0,
+        transition: "opacity 0.2s",
+      }} />
+
       {/* Corner glow */}
       <div style={{
         position: "absolute", top: 0, right: 0, width: 160, height: 160,
