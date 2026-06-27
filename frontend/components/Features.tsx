@@ -172,7 +172,6 @@ function FeatureCard({ feature, index, inView, style, wide, full }: {
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ delay: index * 0.07, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       onMouseMove={handleMouseMove}
-      onMouseLeave={() => setSpotlight(s => ({ ...s, visible: false }))}
       style={{
         ...style,
         padding: full ? "28px 36px" : "28px",
@@ -196,6 +195,7 @@ function FeatureCard({ feature, index, inView, style, wide, full }: {
         el.style.boxShadow = "0 20px 56px rgba(0,0,0,0.35)";
       }}
       onMouseLeave={e => {
+        setSpotlight(s => ({ ...s, visible: false }));
         const el = e.currentTarget as HTMLElement;
         el.style.borderColor = "rgba(255,255,255,0.07)";
         el.style.background = "rgba(255,255,255,0.02)";
