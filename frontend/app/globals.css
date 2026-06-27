@@ -48,8 +48,8 @@ body {
 /* ─── Global keyframes ─── */
 
 @keyframes float-a {
-  0%,100% { transform: translateY(0px) rotate(0deg); }
-  50%      { transform: translateY(-18px) rotate(0.4deg); }
+  0%,100% { transform: translateY(0px); }
+  50%      { transform: translateY(-14px); }
 }
 @keyframes float-b {
   0%,100% { transform: translateY(0px) rotate(0deg); }

@@ -182,13 +182,13 @@ export default function Hero() {
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "center",
-          gap: 20,
+          gap: 48,
           padding: "0 16px 40px",
         }}>
-          {/* Card 1 — Form autofill (raised by 40px via marginTop offset) */}
+          {/* Card 1 — Form autofill */}
           <div style={{
-            marginTop: 40, flexShrink: 0,
-            animation: "float-a 5.5s ease-in-out infinite",
+            marginTop: 48, flexShrink: 0,
+            animation: "float-a 6s ease-in-out infinite 0s",
             zIndex: 2, position: "relative",
           }}>
             <FormCard />
@@ -197,16 +197,16 @@ export default function Hero() {
           {/* Card 2 — Extension popup (top-most) */}
           <div style={{
             marginTop: 0, flexShrink: 0,
-            animation: "float-b 6.5s ease-in-out infinite 1.1s",
+            animation: "float-a 6s ease-in-out infinite 2s",
             zIndex: 3, position: "relative",
           }}>
             <PopupCard />
           </div>
 
-          {/* Card 3 — ATS score (slightly lower) */}
+          {/* Card 3 — ATS score */}
           <div style={{
-            marginTop: 80, flexShrink: 0,
-            animation: "float-c 5s ease-in-out infinite 2.2s",
+            marginTop: 72, flexShrink: 0,
+            animation: "float-a 6s ease-in-out infinite 4s",
             zIndex: 2, position: "relative",
           }}>
             <ATSCard />
