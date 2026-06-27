@@ -69,13 +69,6 @@ export default function Safety() {
         ))}
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.45, duration: 0.5 }}
-        style={{ marginTop: 22, padding: "20px 26px", borderRadius: 16, border: "1px solid rgba(74,222,128,0.2)", background: "rgba(74,222,128,0.05)", display: "flex", alignItems: "center", gap: 16, justifyContent: "center", textAlign: "center", flexWrap: "wrap" }}>
-        <ShieldIcon size={22} />
-        <span style={{ color: "#cbd5e1", fontSize: 15, lineHeight: 1.6 }}>
-          <b style={{ color: "#fafafa" }}>Bottom line:</b> because everything happens in your browser and <b style={{ color: "#86efac" }}>you</b> hit submit, you stay in the same low-risk category as someone applying by hand — just dramatically faster.
-        </span>
-      </motion.div>
     </section>
   );
 }

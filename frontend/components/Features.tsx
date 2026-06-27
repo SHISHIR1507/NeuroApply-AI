@@ -13,29 +13,26 @@ const features = [
       </svg>
     ),
     accent: "#f59e0b",
-    span: "col",
   },
   {
     title: "ATS score checker",
-    description: "Paste a JD and see a live circular match score with missing-keyword chips — before you apply.",
+    description: "Paste a JD and get a live circular match score with keyword chips — before you apply.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" />
       </svg>
     ),
     accent: "#22c55e",
-    span: "col",
   },
   {
     title: "Learns from you",
-    description: "Every correction you make is saved and automatically reused across all future applications. The more you use it, the sharper it gets.",
+    description: "Every correction you make is saved and reused automatically across all future applications.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
       </svg>
     ),
     accent: "#22d3ee",
-    span: "row",
   },
   {
     title: "Multi-step forms",
@@ -46,18 +43,16 @@ const features = [
       </svg>
     ),
     accent: "#fbbf24",
-    span: "col",
   },
   {
     title: "Lightning cache",
-    description: "First fill uses AI. Every repeat is served locally — under 1 ms.",
+    description: "First fill uses AI. Every repeat is served from local cache — under 1 ms.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
       </svg>
     ),
     accent: "#f59e0b",
-    span: "col",
   },
   {
     title: "Never auto-submits",
@@ -68,7 +63,6 @@ const features = [
       </svg>
     ),
     accent: "#22c55e",
-    span: "row",
   },
 ];
 
@@ -106,47 +100,70 @@ export default function Features() {
         </p>
       </motion.div>
 
-      {/* Bento grid */}
+      {/*
+        Bento layout — explicit grid areas so nothing ever orphans:
+        Row 1: [A — 1 col] [B — 1 col] [C — 1 col]
+        Row 2: [D — 2 col      ] [E — 1 col]
+        Row 3: [F — 3 col               ]
+      */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(3, 1fr)",
-        gridTemplateRows: "auto auto",
+        gridTemplateAreas: `
+          "a b c"
+          "d d e"
+          "f f f"
+        `,
         gap: 16,
       }}>
-        {/* Row 1: col | col | row (wide) */}
-        {[0,1].map(i => (
-          <FeatureCard key={features[i].title} feature={features[i]} index={i} inView={inView} />
-        ))}
-        {/* "Learns from you" spans 1 col but gets taller treatment */}
-        <FeatureCard key={features[2].title} feature={features[2]} index={2} inView={inView} tall />
-
-        {/* Row 2: wide | col | col */}
-        <FeatureCard key={features[5].title} feature={features[5]} index={5} inView={inView} wide />
-        {[3,4].map(i => (
-          <FeatureCard key={features[i].title} feature={features[i]} index={i} inView={inView} />
+        {[
+          { feature: features[0], area: "a" },
+          { feature: features[1], area: "b" },
+          { feature: features[2], area: "c" },
+          { feature: features[3], area: "d", wide: true },
+          { feature: features[4], area: "e" },
+          { feature: features[5], area: "f", full: true },
+        ].map(({ feature, area, wide, full }, i) => (
+          <FeatureCard
+            key={feature.title}
+            feature={feature}
+            index={i}
+            inView={inView}
+            style={{ gridArea: area }}
+            wide={wide}
+            full={full}
+          />
         ))}
       </div>
 
       <style>{`
         @media (max-width: 700px) {
-          #features > div:last-child { grid-template-columns: 1fr !important; }
+          #features > div:last-child {
+            grid-template-columns: 1fr !important;
+            grid-template-areas: "a" "b" "c" "d" "e" "f" !important;
+          }
         }
       `}</style>
     </section>
   );
 }
 
-function FeatureCard({ feature, index, inView, wide = false, tall = false }: {
-  feature: typeof features[0]; index: number; inView: boolean; wide?: boolean; tall?: boolean;
+function FeatureCard({ feature, index, inView, style, wide, full }: {
+  feature: typeof features[0];
+  index: number;
+  inView: boolean;
+  style?: React.CSSProperties;
+  wide?: boolean;
+  full?: boolean;
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 32 }}
+      initial={{ opacity: 0, y: 28 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ delay: index * 0.07, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       style={{
-        gridColumn: wide ? "span 2" : undefined,
-        padding: wide ? "32px 36px" : tall ? "32px 28px" : "28px",
+        ...style,
+        padding: full ? "28px 36px" : "28px",
         borderRadius: 20,
         border: "1px solid rgba(255,255,255,0.07)",
         background: "rgba(255,255,255,0.02)",
@@ -155,16 +172,16 @@ function FeatureCard({ feature, index, inView, wide = false, tall = false }: {
         transition: "border-color 0.3s, background 0.3s, transform 0.3s, box-shadow 0.3s",
         cursor: "default",
         display: "flex",
-        flexDirection: wide ? "row" : "column",
-        gap: wide ? 28 : 0,
-        alignItems: wide ? "center" : "flex-start",
+        flexDirection: full ? "row" : "column",
+        alignItems: full ? "center" : "flex-start",
+        gap: full ? 24 : 0,
       }}
       onMouseEnter={e => {
         const el = e.currentTarget as HTMLElement;
         el.style.borderColor = `${feature.accent}40`;
         el.style.background = `${feature.accent}06`;
         el.style.transform = "translateY(-3px)";
-        el.style.boxShadow = `0 20px 56px rgba(0,0,0,0.35)`;
+        el.style.boxShadow = "0 20px 56px rgba(0,0,0,0.35)";
       }}
       onMouseLeave={e => {
         const el = e.currentTarget as HTMLElement;
@@ -174,7 +191,7 @@ function FeatureCard({ feature, index, inView, wide = false, tall = false }: {
         el.style.boxShadow = "none";
       }}
     >
-      {/* Glow */}
+      {/* Corner glow */}
       <div style={{
         position: "absolute", top: 0, right: 0, width: 160, height: 160,
         background: `radial-gradient(circle at top right, ${feature.accent}12 0%, transparent 70%)`,
@@ -183,22 +200,21 @@ function FeatureCard({ feature, index, inView, wide = false, tall = false }: {
 
       {/* Icon */}
       <div style={{
-        width: 48, height: 48, borderRadius: 13,
+        width: 46, height: 46, borderRadius: 13, flexShrink: 0,
         background: `${feature.accent}15`,
         border: `1px solid ${feature.accent}28`,
         display: "flex", alignItems: "center", justifyContent: "center",
         color: feature.accent,
-        flexShrink: 0,
-        marginBottom: wide ? 0 : 18,
+        marginBottom: full ? 0 : 18,
       }}>
         {feature.icon}
       </div>
 
       <div>
-        <h3 style={{ fontSize: wide ? 19 : 16, fontWeight: 700, color: "#fafafa", margin: "0 0 8px", letterSpacing: "-0.015em" }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#fafafa", margin: "0 0 8px", letterSpacing: "-0.015em" }}>
           {feature.title}
         </h3>
-        <p style={{ fontSize: wide ? 15 : 14, color: "#52525b", lineHeight: 1.65, margin: 0 }}>
+        <p style={{ fontSize: 14, color: "#52525b", lineHeight: 1.65, margin: 0 }}>
           {feature.description}
         </p>
       </div>
