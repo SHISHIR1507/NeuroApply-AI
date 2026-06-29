@@ -34,7 +34,7 @@ async def register(
     # Create user
     user = UserProfile(
         email=request.email,
-        hashed_password=hash_password(request.password),
+        hashed_password=await hash_password(request.password),
         full_name=request.full_name,
     )
     db.add(user)
@@ -63,7 +63,7 @@ async def login(
     )
     user = result.scalar_one_or_none()
 
-    if not user or not verify_password(request.password, user.hashed_password):
+    if not user or not await verify_password(request.password, user.hashed_password):
         raise CredentialsException("Invalid email or password")
 
     access_token = create_access_token(user.id)

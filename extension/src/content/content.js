@@ -2,12 +2,41 @@
  * NeuroApply AI — Content Script
  */
 
+// Guard against double-injection (re-inject on extension update hits this first).
+// Tear down any previous instance cleanly before re-running.
+if (window.__neuroapplyLoaded) {
+  try { window.__neuroapplyCleanup?.(); } catch {}
+}
+window.__neuroapplyLoaded = true;
+
 (() => {
   let isProcessing = false;
-  let lastProcessedFields = null;
+  const processedSignatures = new Set();
   let _debounceTimer = null;
   let _observerActive = false;
   let _heartbeat = null;
+
+  // Application tracking — accumulated across a multi-step Easy Apply flow.
+  let lastCompany = null;
+  let lastFilledTotal = 0;
+
+  // ── Debounced signature clear ────────────────────────────────────────
+  // LinkedIn animates between steps by briefly removing the dialog from the DOM.
+  // If we clear processedSignatures immediately on "no dialog", the step
+  // re-appears with a clean set → re-autofills → auto-advances → infinite loop.
+  // We only clear after the dialog has been gone for 2 s (real close, not transition).
+  let _clearSigTimer = null;
+  function scheduleSigClear(ms = 2000) {
+    if (_clearSigTimer) return; // already scheduled
+    _clearSigTimer = setTimeout(() => {
+      processedSignatures.clear();
+      _clearSigTimer = null;
+    }, ms);
+  }
+  function cancelSigClear() {
+    clearTimeout(_clearSigTimer);
+    _clearSigTimer = null;
+  }
 
   // ── isEnabled cache ──────────────────────────────────────────────────
   // Avoids a chrome.storage.local.get() on every DOM mutation.
@@ -34,6 +63,27 @@
     } catch {
       return false;
     }
+  }
+
+  // Auto-advance setting (click Next automatically — never Submit). Off by default.
+  async function isAutoAdvance() {
+    if (!isContextValid()) return false;
+    try {
+      const { neuroapplyAutoAdvance } = await chrome.storage.local.get('neuroapplyAutoAdvance');
+      return neuroapplyAutoAdvance === true;
+    } catch { return false; }
+  }
+
+  // Find a "Next/Continue/Review" button inside the modal — never a Submit button.
+  function findNextButton(modal) {
+    for (const b of modal.querySelectorAll('button, [role="button"]')) {
+      const t = (b.textContent || b.getAttribute('aria-label') || '').trim().toLowerCase();
+      if (t.includes('submit')) continue; // never auto-submit
+      if (t === 'next' || t === 'continue' || t === 'review' || t === 'next step' || t === 'review your application') {
+        if (!b.disabled) return b;
+      }
+    }
+    return null;
   }
 
   // ── Context validity ─────────────────────────────────────────────────
@@ -193,6 +243,108 @@
     return { open, close, clear, say, startTyping, stopTyping, scheduleClose, isOpen, quip };
   })();
 
+  // ── ATS Score Card ───────────────────────────────────────────────────
+  // Separate circular-ring card (bottom-left). Inspired by 21st.dev's dark
+  // glassmorphism card pattern with SVG stroke-dashoffset ring animation.
+  const AtsCard = (() => {
+    let root = null;
+    let closeTimer = null;
+    const R = 40;
+    const CIRC = +(2 * Math.PI * R).toFixed(2); // 251.33
+
+    function build() {
+      if (root) return;
+      root = document.createElement('div');
+      root.id = 'na-ats-card';
+      root.innerHTML = `
+        <div class="na-ats-header">
+          <span class="na-ats-title">ATS Match Score</span>
+          <button class="na-ats-close" title="Dismiss">×</button>
+        </div>
+        <div class="na-ats-body">
+          <div class="na-ats-ring-wrap">
+            <svg viewBox="0 0 100 100" width="108" height="108">
+              <circle class="na-ats-track" cx="50" cy="50" r="${R}"/>
+              <circle class="na-ats-fill" cx="50" cy="50" r="${R}"
+                style="stroke-dasharray:${CIRC};stroke-dashoffset:${CIRC}"/>
+            </svg>
+            <div class="na-ats-center">
+              <span class="na-ats-num">–</span>
+              <span class="na-ats-den">/100</span>
+            </div>
+          </div>
+          <p class="na-ats-summary"></p>
+          <div class="na-ats-chips na-chips-matched"></div>
+          <div class="na-ats-chips na-chips-missing"></div>
+        </div>
+      `;
+      root.querySelector('.na-ats-close').addEventListener('click', close);
+      document.body.appendChild(root);
+    }
+
+    function open() {
+      build();
+      clearTimeout(closeTimer);
+      root.classList.remove('na-ats-closing');
+      void root.offsetWidth;
+      root.classList.add('na-ats-open');
+    }
+
+    function close() {
+      if (!root) return;
+      clearTimeout(closeTimer);
+      root.classList.add('na-ats-closing');
+      root.classList.remove('na-ats-open');
+    }
+
+    function showLoading() {
+      build();
+      root.querySelector('.na-ats-num').textContent = '…';
+      root.querySelector('.na-ats-num').style.color = '#818cf8';
+      root.querySelector('.na-ats-summary').textContent = 'Analyzing your resume against this job…';
+      root.querySelector('.na-chips-matched').innerHTML = '';
+      root.querySelector('.na-chips-missing').innerHTML = '';
+      const fill = root.querySelector('.na-ats-fill');
+      fill.style.stroke = '#818cf8';
+      fill.style.strokeDashoffset = CIRC;
+    }
+
+    function setResult(score, summary, matched, missing) {
+      build();
+      const color = score >= 75 ? '#4ade80' : score >= 50 ? '#fbbf24' : '#f87171';
+      const fill = root.querySelector('.na-ats-fill');
+      const num = root.querySelector('.na-ats-num');
+
+      num.textContent = score;
+      num.style.color = color;
+      fill.style.stroke = color;
+      // Animate the ring — tiny delay lets the transition trigger
+      setTimeout(() => {
+        fill.style.strokeDashoffset = CIRC * (1 - score / 100);
+      }, 60);
+
+      root.querySelector('.na-ats-summary').textContent = summary || '';
+      root.querySelector('.na-chips-matched').innerHTML =
+        (matched || []).slice(0, 8).map(k => `<span class="na-chip na-chip-ok">${k}</span>`).join('');
+      root.querySelector('.na-chips-missing').innerHTML =
+        (missing || []).slice(0, 6).map(k => `<span class="na-chip na-chip-warn">${k}</span>`).join('');
+    }
+
+    function setError(msg) {
+      build();
+      root.querySelector('.na-ats-num').textContent = '!';
+      root.querySelector('.na-ats-num').style.color = '#f87171';
+      root.querySelector('.na-ats-summary').textContent = msg;
+    }
+
+    function scheduleClose(ms) {
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(close, ms);
+    }
+
+    return { open, close, showLoading, setResult, setError, scheduleClose };
+  })();
+
   // ── Modal detection ──────────────────────────────────────────────────
   // Only matches LinkedIn's actual Easy Apply overlay — never search filters,
   // inline page content, or other dialogs.
@@ -231,12 +383,83 @@
         }
       }
     }
+
+    // Fallback: LinkedIn sometimes renders Easy Apply at /apply/ as a full-page
+    // overlay WITHOUT role="dialog". Scan the page body directly.
+    if (window.location.pathname.includes('/apply')) {
+      for (const h of document.querySelectorAll('h1, h2, h3, h4')) {
+        const t = h.textContent.trim().toLowerCase();
+        if (t === 'easy apply' || t.startsWith('apply to')) {
+          // Walk up to the nearest container that holds the form inputs
+          let el = h.parentElement;
+          for (let i = 0; i < 8 && el && el !== document.body; i++) {
+            if (el.querySelectorAll('input, select, textarea').length > 0) return el;
+            el = el.parentElement;
+          }
+        }
+      }
+    }
+
     return null;
   }
 
   // ── Modal processing ─────────────────────────────────────────────────
   function cropLabel(label) {
     return label.length > 30 ? label.slice(0, 29) + '…' : label;
+  }
+
+  // Pull the company name from the modal's "Apply to {Company}" heading.
+  function extractCompany(modal) {
+    for (const h of modal.querySelectorAll('h1, h2, h3')) {
+      const m = (h.textContent || '').trim().match(/^Apply to (.+)$/i);
+      if (m) return m[1].trim().slice(0, 200);
+    }
+    return null;
+  }
+
+  // Scrape the job description text from the LinkedIn job page.
+  function getJobDescription() {
+    const sels = ['#job-details', '.jobs-description__content', '.jobs-box__html-content',
+                  '.jobs-description-content__text', '.jobs-description', 'article'];
+    let best = '';
+    for (const s of sels) {
+      for (const el of document.querySelectorAll(s)) {
+        const t = (el.innerText || '').trim();
+        if (t.length > best.length) best = t;
+      }
+    }
+    return best.slice(0, 8000);
+  }
+
+  // Run an ATS match of this job against the user's resume, shown in the score card.
+  async function runAtsScore(jd) {
+    AtsCard.open();
+    AtsCard.showLoading();
+    try {
+      const res = await chrome.runtime.sendMessage({
+        type: 'ATS_SCORE',
+        payload: { job_description: jd, job_title: extractJobTitle() },
+      });
+      if (!res || res.error) {
+        AtsCard.setError(res?.message || res?.error || 'Could not score this job.');
+        AtsCard.scheduleClose(7000);
+        return;
+      }
+      AtsCard.setResult(res.score, res.summary, res.matched, res.missing);
+      AtsCard.scheduleClose(25000);
+    } catch {
+      AtsCard.setError('Something went wrong scoring this job.');
+      AtsCard.scheduleClose(6000);
+    }
+  }
+
+  // Best-effort job title from the underlying job posting page.
+  function extractJobTitle() {
+    const el = document.querySelector(
+      '.job-details-jobs-unified-top-card__job-title, .jobs-unified-top-card__job-title, .t-24.job-details-jobs-unified-top-card__job-title, h1'
+    );
+    const t = el?.textContent?.trim();
+    return t ? t.slice(0, 200) : null;
   }
 
   // Resolve fields via the service worker, but never hang forever.
@@ -246,6 +469,14 @@
       chrome.runtime.sendMessage({ type: 'RESOLVE_FIELDS', payload }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('resolve_timeout')), ms)),
     ]);
+  }
+
+  // A stable key for the job currently being applied to. Tying the dedup
+  // signature to this prevents a different company's modal from being falsely
+  // skipped just because it asks the same questions (Email, Phone, etc.).
+  function currentJobKey() {
+    const m = location.href.match(/currentJobId=(\d+)/) || location.pathname.match(/\/jobs\/view\/(\d+)/);
+    return m ? m[1] : location.pathname;
   }
 
   async function processModal(modal) {
@@ -260,15 +491,31 @@
     } catch {
       return;
     }
-    if (!fields.length) return;
+    if (!fields.length) {
+      // Final review step has no inputs — auto-click Review once if opted in.
+      const reviewSig = currentJobKey() + '::__review__';
+      if (!processedSignatures.has(reviewSig) && await isAutoAdvance()) {
+        const reviewBtn = findNextButton(modal);
+        if (reviewBtn) {
+          processedSignatures.add(reviewSig);
+          ChatWidget.open();
+          ChatWidget.clear();
+          ChatWidget.say('All done — auto-clicking Review… ✅');
+          ChatWidget.scheduleClose(4000);
+          setTimeout(() => { if (isContextValid()) reviewBtn.click(); }, 700);
+        }
+      }
+      return;
+    }
 
-    const fieldSignature = fields.map(f => f.label).join('|');
-    if (fieldSignature === lastProcessedFields) return; // already handled — stay silent
+    // Signature is per-job + per-field-set, so the same questions on a
+    // different job are treated as new work (not a duplicate to skip).
+    const fieldSignature = currentJobKey() + '::' + fields.map(f => f.label).join('|');
+    if (processedSignatures.has(fieldSignature)) return; // already handled — stay silent
 
     // ── Commit. Mark processed up-front so rapid re-entry bails above. ──
     isProcessing = true;
-    lastProcessedFields = fieldSignature;
-    modal.dataset.neuroapplyModal = 'true';
+    processedSignatures.add(fieldSignature);
 
     ChatWidget.open();
     ChatWidget.clear();
@@ -315,6 +562,10 @@
         const result = window.Autofill.fillAll(modal, enrichedFields);
         console.log(`[NeuroApply] Filled: ${result.filled}, Unresolved: ${result.unresolved}`);
 
+        // Track for application logging (accumulates across multi-step flow)
+        lastCompany = extractCompany(modal) || lastCompany;
+        lastFilledTotal += result.filled;
+
         // Show per-field status (cap at 6 lines to keep widget compact)
         const lines = enrichedFields.slice(0, 6).map(f =>
           f.value
@@ -333,6 +584,24 @@
           : `Filled <b>${result.filled}/${total}</b> · <span class="na-warn">${result.unresolved} need your input</span>`;
         ChatWidget.say(doneHtml, 350);
         ChatWidget.scheduleClose(10000);
+
+        // Auto-advance to the next step (never auto-submit), if the user opted in
+        // and every required field on this step was resolved.
+        if (result.unresolved === 0 && await isAutoAdvance()) {
+          const nextBtn = findNextButton(modal);
+          if (nextBtn) {
+            ChatWidget.say('Auto-advancing to the next step… ➡️', 700);
+            const delay = 1000 + Math.random() * 800; // human-like pacing
+            setTimeout(() => {
+              if (!isContextValid()) return;
+              // Abort if the user is actively typing in a form field
+              const active = document.activeElement;
+              if (active && modal.contains(active) &&
+                  (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+              nextBtn.click();
+            }, delay);
+          }
+        }
       } else {
         console.warn('[NeuroApply] Unexpected response:', response);
         ChatWidget.say('Got an unexpected response. Check console.');
@@ -406,18 +675,24 @@
   async function scan() {
     if (!isContextValid() || !(await isEnabled())) return;
 
-    // Fast bail: no dialog in DOM → definitely not on Easy Apply
-    if (!document.querySelector('[role="dialog"]')) {
-      lastProcessedFields = null;
+    // Fast bail: no dialog in DOM → definitely not on Easy Apply.
+    // Use a debounced clear — LinkedIn briefly removes the dialog during step
+    // transitions, and an immediate clear would let the returning step re-autofill.
+    const hasDialog = !!document.querySelector('[role="dialog"]');
+    const isApplyPage = window.location.pathname.includes('/apply');
+    if (!hasDialog && !isApplyPage) {
+      scheduleSigClear(2000);
       return;
     }
 
     const modal = findEasyApplyModal();
     if (modal) {
+      cancelSigClear(); // dialog is active — cancel any pending clear
+      modal.dataset.neuroapplyModal = 'true'; // mark before attaching listeners
       processModal(modal);
       attachCorrectionListeners(modal);
     } else {
-      lastProcessedFields = null;
+      scheduleSigClear(2000);
     }
   }
 
@@ -455,24 +730,69 @@
     const btn = e.target.closest('button, [role="button"]');
     if (!btn) return;
     const text = (btn.textContent || btn.getAttribute('aria-label') || '').trim().toLowerCase();
+
+    // Submit → log the application, then reset the tracking counters.
+    const isSubmit = text.includes('submit application') || text === 'submit';
+    if (isSubmit) {
+      try {
+        chrome.runtime.sendMessage({
+          type: 'LOG_APPLICATION',
+          payload: {
+            company: lastCompany,
+            job_title: extractJobTitle(),
+            job_url: window.location.href,
+            fields_filled: lastFilledTotal,
+            platform: 'linkedin',
+          },
+        });
+        console.log(`[NeuroApply] Logged application → ${lastCompany || 'unknown'}`);
+      } catch { /* context invalidated */ }
+      lastCompany = null;
+      lastFilledTotal = 0;
+      return;
+    }
+
     const isNavBtn = text === 'next' || text === 'continue' || text === 'review'
                   || text === 'next step' || text === 'review your application';
     if (!isNavBtn) return;
 
     isProcessing = false;
-    lastProcessedFields = null;
     invalidateEnabledCache();
     scanSoon(900); // let LinkedIn render the next step first
   }, true);
 
-  // ── Manual fill trigger (from popup "Fill this page" button) ─────────
+  // ── Back / forward navigation ────────────────────────────────────────
+  // The browser back/forward buttons fire popstate. Reset state immediately
+  // (don't wait for the 1.5s heartbeat) so the next job's modal is handled.
+  window.addEventListener('popstate', () => {
+    if (!isContextValid()) return;
+    isProcessing = false;
+    processedSignatures.clear();
+    lastCompany = null;
+    lastFilledTotal = 0;
+    scanSoon(700);
+  });
+
+  // ── Messages from the popup ──────────────────────────────────────────
   try {
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+      // ATS score: scrape the JD on this page and score it.
+      if (msg.type === 'ATS_SCORE') {
+        if (!isContextValid()) { sendResponse({ status: 'context_invalid' }); return true; }
+        const jd = getJobDescription();
+        if (!jd || jd.length < 60) {
+          sendResponse({ status: 'no_jd' });
+          return true;
+        }
+        runAtsScore(jd).then(() => sendResponse({ status: 'ok' }));
+        return true;
+      }
+
       if (msg.type !== 'FILL_NOW') return;
       if (!isContextValid()) { sendResponse({ status: 'context_invalid' }); return true; }
 
       isProcessing = false;
-      lastProcessedFields = null;
+      processedSignatures.clear();
       invalidateEnabledCache();
 
       const modal = findEasyApplyModal();
@@ -496,7 +816,7 @@
       if (area !== 'local' || !('neuroapplyEnabled' in changes)) return;
       invalidateEnabledCache();
       if (changes.neuroapplyEnabled.newValue !== false) {
-        lastProcessedFields = null; // force a fresh fill after enabling
+        processedSignatures.clear(); // force a fresh fill after enabling
         startObserver();            // starts observer (if needed) + scans now
       } else {
         stopObserver();
@@ -522,10 +842,20 @@
       if (location.href !== _lastUrl) {
         _lastUrl = location.href;
         isProcessing = false;
-        lastProcessedFields = null;
+        processedSignatures.clear();
+        lastCompany = null;
+        lastFilledTotal = 0;
         scanSoon(600);
       }
     }, 1500);
+
+    // Expose cleanup so a re-injected instance can tear this one down first.
+    window.__neuroapplyCleanup = () => {
+      try { observer.disconnect(); } catch {}
+      clearInterval(_heartbeat);
+      clearTimeout(_debounceTimer);
+      _observerActive = false;
+    };
 
     if (!(await isEnabled())) return; // Disabled — do nothing, storage listener will activate later
     startObserver();

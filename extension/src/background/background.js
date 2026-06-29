@@ -6,7 +6,8 @@
 // ------------------------------------------------------------------
 // Configuration
 // ------------------------------------------------------------------
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+importScripts('../config.js'); // defines NEUROAPPLY_API
+const API_BASE_URL = NEUROAPPLY_API;
 let authToken = null;
 
 // ------------------------------------------------------------------
@@ -195,6 +196,32 @@ async function submitFeedback(payload) {
 }
 
 // ------------------------------------------------------------------
+// Application logging (on submit) — powers dashboard stats
+// ------------------------------------------------------------------
+async function atsScore(payload) {
+  const token = await getAuthToken();
+  if (!token) return { error: 'auth_required', message: 'Please log in first' };
+  return apiRequest('/ats/score', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+async function logApplication(payload) {
+  const token = await getAuthToken();
+  if (!token) return { status: 'no_auth' };
+  // Fire-and-forget; don't block the user's submit flow.
+  apiRequest('/applications', {
+    method: 'POST',
+    body: JSON.stringify({
+      company: payload.company ?? null,
+      job_title: payload.job_title ?? null,
+      job_url: payload.job_url ?? null,
+      fields_filled: payload.fields_filled ?? 0,
+      platform: payload.platform ?? 'linkedin',
+    }),
+  });
+  return { status: 'logged' };
+}
+
+// ------------------------------------------------------------------
 // Utilities
 // ------------------------------------------------------------------
 function simpleHash(str) {
@@ -214,6 +241,8 @@ function simpleHash(str) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const handlers = {
     'RESOLVE_FIELDS': () => resolveFields(request.payload),
+    'ATS_SCORE': () => atsScore(request.payload),
+    'LOG_APPLICATION': () => logApplication(request.payload),
     'SUBMIT_FEEDBACK': () => submitFeedback(request.payload),
     'LOGIN': () => handleLogin(request.payload),
     'LOGOUT': () => handleLogout(),
@@ -263,22 +292,44 @@ async function getAuthStatus() {
 // ------------------------------------------------------------------
 // Auto-reload LinkedIn tabs when the extension reloads (DEV ONLY)
 // ------------------------------------------------------------------
-// Reloading the extension kills the content script in every open tab; it
-// can't be revived without a page refresh. In development we just refresh
-// those tabs automatically so there's no manual refresh step. In production
-// we skip this — refreshing could wipe a user's in-progress application, so
-// they get the in-page "needs a refresh" banner instead.
-chrome.runtime.onInstalled.addListener(async () => {
+// When the extension reloads or updates, content scripts in open tabs become
+// orphaned — chrome.runtime.id goes invalid and all API calls fail.
+// In dev: reload the tab (fastest, no in-progress application to protect).
+// In production: re-inject the scripts without reloading, so active applications
+// are not disrupted. A guard in content.js prevents double-injection.
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   try {
-    const self = await chrome.management.getSelf();
-    if (self.installType !== 'development') return;
     const tabs = await chrome.tabs.query({ url: '*://*.linkedin.com/*' });
-    for (const tab of tabs) {
-      if (tab.id) chrome.tabs.reload(tab.id);
+    if (!tabs.length) return;
+
+    const self = await chrome.management.getSelf();
+    if (self.installType === 'development') {
+      for (const tab of tabs) {
+        if (tab.id) chrome.tabs.reload(tab.id);
+      }
+      console.log(`[NeuroApply BG] Dev mode — reloaded ${tabs.length} LinkedIn tab(s)`);
+      return;
     }
-    console.log(`[NeuroApply BG] Dev mode — reloaded ${tabs.length} LinkedIn tab(s)`);
+
+    // Production: silently re-inject so orphaned scripts come back alive.
+    const files = [
+      'src/content/fieldExtractor.js',
+      'src/content/autofill.js',
+      'src/content/content.js',
+    ];
+    for (const tab of tabs) {
+      if (!tab.id) continue;
+      try {
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files });
+        await chrome.scripting.insertCSS({
+          target: { tabId: tab.id },
+          files: ['src/content/content.css'],
+        });
+        console.log(`[NeuroApply BG] Re-injected into tab ${tab.id}`);
+      } catch { /* tab may be restricted (chrome:// etc.) — skip silently */ }
+    }
   } catch (e) {
-    console.warn('[NeuroApply BG] Auto-reload skipped:', e?.message);
+    console.warn('[NeuroApply BG] onInstalled handler failed:', e?.message);
   }
 });
 

@@ -1,8 +1,10 @@
-const BASE_URL = "http://localhost:8000/api/v1";
+// Configurable per environment. Set NEXT_PUBLIC_API_URL in Vercel to the
+// deployed backend origin (e.g. https://neuroapply-ai.onrender.com).
+const API_ORIGIN =
+  process.env.NEXT_PUBLIC_API_URL || "https://neuroapply-ai.onrender.com";
+const BASE_URL = `${API_ORIGIN}/api/v1`;
 
-function getToken() {
-  return typeof window !== "undefined" ? localStorage.getItem("token") : null;
-}
+import { getToken, clearSession } from "./auth";
 
 async function request<T>(
   path: string,
@@ -17,6 +19,14 @@ async function request<T>(
       ...(options.headers || {}),
     },
   });
+
+  if (res.status === 401) {
+    clearSession();
+    const current = typeof window !== "undefined" ? window.location.pathname : "";
+    const next = current && current !== "/login" ? `?next=${encodeURIComponent(current)}&reason=expired` : "?reason=expired";
+    if (typeof window !== "undefined") window.location.replace(`/login${next}`);
+    throw new Error("Session expired. Please sign in again.");
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Request failed" }));
@@ -56,10 +66,47 @@ export const api = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: form,
     }).then((r) => {
+      if (r.status === 401) { clearSession(); window.location.replace("/login?reason=expired"); throw new Error("Session expired"); }
       if (!r.ok) throw new Error("Upload failed");
       return r.json();
     });
   },
+
+  // Raw SSE stream for the onboarding chat. Caller reads response.body.
+  chatStream: (message: string, history: { role: string; content: string }[], onboarding = false) =>
+    fetch(`${BASE_URL}/chat/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+      body: JSON.stringify({ message, history, onboarding }),
+    }),
+
+  getApplications: (limit = 8) => request<ApplicationItem[]>(`/applications?limit=${limit}`),
+  getApplicationStats: () => request<ApplicationStats>("/applications/stats"),
+
+  raiseIssue: (payload: { name?: string; email?: string; category?: string; message: string }) =>
+    fetch(`${BASE_URL}/support/issue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then(async (r) => {
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({ detail: "Failed" }));
+        throw new Error(e.detail || "Failed to send");
+      }
+      return r.json();
+    }),
+
+  getAnswers: () => request<AnswerItem[]>("/answers"),
+  updateAnswer: (id: string, answer_value: string) =>
+    request<AnswerItem>(`/answers/${id}`, { method: "PUT", body: JSON.stringify({ answer_value }) }),
+  deleteAnswer: (id: string) =>
+    fetch(`${BASE_URL}/answers/${id}`, {
+      method: "DELETE",
+      headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
+    }).then((r) => { if (!r.ok && r.status !== 204) throw new Error("Delete failed"); }),
 
   getResumeStatus: () =>
     request<ResumeStatusItem[]>("/resume/status").then((list) => {
@@ -111,4 +158,31 @@ export interface ResumeStatus {
   parsed_at?: string;
   fields_extracted?: number;
   chunks_embedded?: number;
+}
+
+export interface ApplicationItem {
+  id: string;
+  company?: string;
+  job_title?: string;
+  platform: string;
+  job_url?: string;
+  fields_filled: number;
+  applied_at: string;
+}
+
+export interface ApplicationStats {
+  total_applied: number;
+  this_week: number;
+  time_saved_minutes: number;
+  fields_filled: number;
+}
+
+export interface AnswerItem {
+  id: string;
+  question_text: string;
+  answer_value: string;
+  canonical_key?: string | null;
+  platform: string;
+  times_used: number;
+  updated_at: string;
 }

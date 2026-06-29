@@ -1,0 +1,29 @@
+# Render blueprint — one-click deploy for the NeuroApply backend.
+# In Render: New → Blueprint → connect this repo. It builds backend/Dockerfile.
+# Set the `sync: false` secrets in the dashboard after the first deploy.
+services:
+  - type: web
+    name: neuroapply-api
+    runtime: docker
+    repo: https://github.com/SHISHIR1507/NeuroApply-AI
+    branch: main
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore          # match Neon (ap-southeast-1) for low latency
+    plan: free                 # upgrade to 'starter' for always-on (no cold starts)
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL       # Neon async URL (postgresql+asyncpg://...)
+        sync: false
+      - key: DATABASE_URL_SYNC  # Neon sync URL (postgresql://...)
+        sync: false
+      - key: REDIS_URL          # Redis Cloud URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: JWT_SECRET_KEY     # auto-generate a strong production secret
+        generateValue: true
+      - key: CORS_ORIGINS       # ["chrome-extension://YOUR_PUBLISHED_ID"] after upload
+        sync: false

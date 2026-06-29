@@ -95,12 +95,17 @@ const Autofill = (() => {
    */
   function fillRadio(radioName, value, container) {
     const radios = container.querySelectorAll(`input[type="radio"][name="${radioName}"]`);
+    const val = value.toLowerCase().trim();
     for (const radio of radios) {
-      const label = radio.nextElementSibling?.textContent?.trim() || radio.value;
+      const wrappingLabel = radio.closest('label');
+      const optText = (wrappingLabel?.textContent?.trim()
+        || radio.nextElementSibling?.textContent?.trim()
+        || radio.value).toLowerCase().trim();
       if (
-        radio.value === value ||
-        label.toLowerCase() === value.toLowerCase() ||
-        label.toLowerCase().includes(value.toLowerCase())
+        radio.value.toLowerCase() === val ||
+        optText === val ||
+        optText.includes(val) ||
+        val.includes(optText)
       ) {
         radio.checked = true;
         radio.dispatchEvent(new Event('change', { bubbles: true }));

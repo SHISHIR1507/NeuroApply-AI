@@ -7,11 +7,15 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
+  <!-- Animated aurora backdrop -->
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
   <div class="popup-container">
     <!-- Header -->
     <header class="popup-header">
       <div class="popup-logo">
-        <span class="logo-icon">🧠</span>
+        <img class="logo-img" src="../../icons/icon48.png" alt="">
         <h1>NeuroApply AI</h1>
       </div>
       <div class="header-right">
@@ -67,6 +71,15 @@
     <!-- Main Section (shown when logged in) -->
     <section id="mainSection" class="section hidden">
 
+      <!-- Signed-in account -->
+      <div class="account-chip">
+        <div class="account-avatar" id="accountAvatar">·</div>
+        <div class="account-info">
+          <span class="account-label">Signed in as</span>
+          <span class="account-email" id="accountEmail">…</span>
+        </div>
+      </div>
+
       <!-- Fill current page -->
       <button id="fillNowBtn" class="btn btn-primary fill-now-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px">
@@ -75,12 +88,28 @@
         Fill this page
       </button>
 
-      <!-- Open profile page -->
-      <button id="openProfileBtn" class="btn btn-secondary open-profile-btn">
-        Open Profile Setup
+      <!-- ATS score of the current job -->
+      <button id="atsBtn" class="btn btn-secondary open-profile-btn">
+        Score this job (ATS)
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </button>
+
+      <!-- Open dashboard (website) -->
+      <button id="dashboardBtn" class="btn btn-primary open-profile-btn">
+        Open Dashboard
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
           <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+      </button>
+
+      <!-- Set up profile via the web chat -->
+      <button id="openProfileBtn" class="btn btn-secondary open-profile-btn">
+        Set up profile with AI
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px">
+          <path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3z"/>
         </svg>
       </button>
 
@@ -98,10 +127,23 @@
         </div>
       </div>
 
+      <!-- Auto-advance toggle -->
+      <div class="autoadvance-row">
+        <div>
+          <p class="aa-title">Auto-advance steps</p>
+          <p class="aa-sub">Clicks “Next” for you · never submits</p>
+        </div>
+        <label class="toggle-switch" title="Auto-click Next between steps">
+          <input type="checkbox" id="autoAdvanceToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
       <button id="logoutBtn" class="btn btn-ghost">Sign Out</button>
     </section>
   </div>
 
+  <script src="../config.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

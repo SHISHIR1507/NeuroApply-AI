@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NeuroApply AI",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Intelligent job application assistant — autofills forms using your profile and resume data.",
   
   "permissions": [
@@ -13,12 +13,12 @@
   
   "host_permissions": [
     "*://*.linkedin.com/*",
+    "https://neuroapply-ai.onrender.com/*",
     "http://localhost:8000/*"
   ],
   
   "background": {
-    "service_worker": "src/background/background.js",
-    "type": "module"
+    "service_worker": "src/background/background.js"
   },
   
   "content_scripts": [

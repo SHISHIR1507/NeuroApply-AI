@@ -1,5 +1,7 @@
 "use client";
 
+import RaiseIssue from "./RaiseIssue";
+
 export default function Footer() {
   return (
     <footer style={{
@@ -15,9 +17,9 @@ export default function Footer() {
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
           <div style={{
             width: 28, height: 28, borderRadius: 7,
-            background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+            background: "linear-gradient(135deg, #f59e0b, #fbbf24)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 13, fontWeight: 700, color: "#fff",
+            fontSize: 13, fontWeight: 700, color: "#07070a",
           }}>N</div>
           <span style={{ fontSize: 14, fontWeight: 600, color: "#475569" }}>
             NeuroApply AI
@@ -38,6 +40,7 @@ export default function Footer() {
               onMouseLeave={e => (e.currentTarget.style.color = "#334155")}
             >{l.label}</a>
           ))}
+          <RaiseIssue variant="link" />
         </div>
 
         <span style={{ fontSize: 12, color: "#1e293b" }}>

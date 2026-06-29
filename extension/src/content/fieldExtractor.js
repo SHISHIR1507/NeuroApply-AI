@@ -97,6 +97,44 @@ const FieldExtractor = (() => {
   }
 
   /**
+   * Find the question-level label for a radio button group.
+   * Radio inputs are nested inside per-option <label>s, so findLabel() returns
+   * the option text ("Yes"/"No"). We need to go higher to find the question.
+   */
+  function findRadioGroupLabel(input) {
+    // <fieldset> → <legend> is the standard pattern
+    const fieldset = input.closest('fieldset');
+    if (fieldset) {
+      const legend = fieldset.querySelector('legend');
+      if (legend?.textContent.trim()) return legend.textContent.trim();
+    }
+    // LinkedIn sometimes uses div wrappers with a label-like span/div
+    let parent = input.parentElement;
+    for (let i = 0; i < 8 && parent; i++) {
+      const legend = parent.querySelector('legend');
+      if (legend?.textContent.trim()) return legend.textContent.trim();
+      const ql = parent.querySelector(
+        '.fb-dash-form-element__label, .jobs-easy-apply-form-element__label, [data-test-form-element-label]'
+      );
+      if (ql?.textContent.trim()) return ql.textContent.trim();
+      parent = parent.parentElement;
+    }
+    return null;
+  }
+
+  /**
+   * Get the visible text label of a single radio option.
+   * Prefers the wrapping <label> element over nextElementSibling.
+   */
+  function radioOptionText(input) {
+    const wrappingLabel = input.closest('label');
+    if (wrappingLabel) return wrappingLabel.textContent.trim();
+    const sibling = input.nextElementSibling;
+    if (sibling?.textContent.trim()) return sibling.textContent.trim();
+    return input.value;
+  }
+
+  /**
    * Extract all form fields from a container (e.g., Easy Apply modal)
    */
   function extractFields(container) {
@@ -115,33 +153,28 @@ const FieldExtractor = (() => {
       const type = getFieldType(input);
       const options = extractOptions(input);
 
-      // For radio buttons, group by name and only add once
+      // For radio buttons, group by input.name (all options share the same name).
+      // Do NOT group by label — findLabel() returns the per-option text ("Yes"/"No"),
+      // not the question text, so every option would appear as a separate field.
       if (type === 'radio') {
-        const existing = fields.find(f => f.label === label && f.type === 'radio');
+        const radioName = input.name;
+        const optText = radioOptionText(input);
+        const existing = fields.find(f => f.element === radioName && f.type === 'radio');
         if (existing) {
-          // Add this option to the existing radio group
-          if (existing.options) {
-            existing.options.push({
-              value: input.value,
-              text: input.nextElementSibling?.textContent?.trim() || input.value,
-              checked: input.checked,
-            });
-          }
+          existing.options.push({ value: input.value, text: optText, checked: input.checked });
+          if (input.checked) existing.currentValue = input.value;
           return;
         }
-        // First radio in group
+        // First radio in this group — use the question-level label
+        const groupLabel = findRadioGroupLabel(input) || label;
         fields.push({
-          id: generateFieldId(label, type, index),
-          label: label,
+          id: generateFieldId(groupLabel, type, index),
+          label: groupLabel,
           type: type,
           required: input.required || input.closest('[required]') !== null,
-          options: [{
-            value: input.value,
-            text: input.nextElementSibling?.textContent?.trim() || input.value,
-            checked: input.checked,
-          }],
+          options: [{ value: input.value, text: optText, checked: input.checked }],
           currentValue: input.checked ? input.value : null,
-          element: input.name, // Store name for radio group targeting
+          element: radioName,
         });
         return;
       }

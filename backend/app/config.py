@@ -39,8 +39,19 @@ class Settings(BaseSettings):
     openai_llm_model: str = "gpt-4o-mini"
     openai_embed_model: str = "text-embedding-3-small"
 
+    # --- Support / email (Resend) ---
+    resend_api_key: str = ""
+    resend_from: str = "NeuroApply <onboarding@resend.dev>"
+    support_email: str = "singhshishir4727@gmail.com"
+
     # --- CORS ---
-    cors_origins: List[str] = ["chrome-extension://localhost", "http://localhost:3000"]
+    # Published extension + Vercel marketing site + local dev.
+    # NOTE: on Render this is overridden by the CORS_ORIGINS env var — keep them in sync.
+    cors_origins: List[str] = [
+        "chrome-extension://nglhmaeijiphnabgdeeimepoophpffpd",
+        "https://neuro-apply-ai.vercel.app",
+        "http://localhost:3000",
+    ]
 
     # --- Embedding dimensions (text-embedding-3-small outputs 1536-dim) ---
     embedding_dimensions: int = 1536

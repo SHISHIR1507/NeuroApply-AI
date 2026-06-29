@@ -3,7 +3,7 @@
  * Minimal launcher: toggle, profile page button, resume upload, sign out.
  */
 
-const API = 'http://localhost:8000/api/v1';
+const API = NEUROAPPLY_API;
 
 document.addEventListener('DOMContentLoaded', async () => {
   const authSection     = document.getElementById('authSection');
@@ -26,6 +26,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.storage.local.set({ neuroapplyEnabled: enableToggle.checked });
   });
 
+  // ── Auto-advance toggle ─────────────────────────────────────────
+  const autoAdvanceToggle = document.getElementById('autoAdvanceToggle');
+  if (autoAdvanceToggle) {
+    const { neuroapplyAutoAdvance } = await chrome.storage.local.get('neuroapplyAutoAdvance');
+    autoAdvanceToggle.checked = neuroapplyAutoAdvance === true;
+    autoAdvanceToggle.addEventListener('change', () => {
+      chrome.storage.local.set({ neuroapplyAutoAdvance: autoAdvanceToggle.checked });
+    });
+  }
+
   // ── Auth check ──────────────────────────────────────────────────
   // Optimistic: if a token exists, show the main view immediately to avoid a
   // flash of the login form, then verify in the background and only revert
@@ -42,8 +52,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           await bg('LOGOUT');
           showAuth();
           updateStatus('disconnected');
+          return;
         }
-        // non-401 errors (backend down, 5xx): stay on main, keep the session
+        if (res.ok) {
+          try { setAccount(await res.json()); } catch { /* ignore */ }
+        }
       })
       .catch(() => { /* backend unreachable — keep the optimistic main view */ });
   } else {
@@ -77,9 +90,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 3000);
   });
 
-  // ── Open full-page profile chat ─────────────────────────────────
+  // ── ATS score of the current job ────────────────────────────────
+  const atsBtn = document.getElementById('atsBtn');
+  atsBtn?.addEventListener('click', async () => {
+    const original = atsBtn.innerHTML;
+    atsBtn.textContent = 'Scoring…';
+    atsBtn.disabled = true;
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    try {
+      const res = await chrome.tabs.sendMessage(tab.id, { type: 'ATS_SCORE' });
+      if (res?.status === 'no_jd') atsBtn.textContent = 'Open a job posting first';
+      else if (res?.status === 'context_invalid') atsBtn.textContent = 'Reload the LinkedIn tab';
+      else { atsBtn.textContent = 'Score shown on page →'; setTimeout(() => window.close(), 700); }
+    } catch {
+      atsBtn.textContent = 'Reload the LinkedIn tab';
+    }
+    setTimeout(() => { atsBtn.innerHTML = original; atsBtn.disabled = false; }, 2600);
+  });
+
+  // ── Open the web app (dashboard + AI profile chat) ──────────────
+  const WEB_APP = 'https://neuro-apply-ai.vercel.app';
+  const dashboardBtn = document.getElementById('dashboardBtn');
+  dashboardBtn?.addEventListener('click', () => {
+    chrome.tabs.create({ url: `${WEB_APP}/dashboard` });
+  });
   openProfileBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('src/pages/profile.html') });
+    chrome.tabs.create({ url: `${WEB_APP}/dashboard/profile` });
   });
 
   // ── Auth form toggles ───────────────────────────────────────────
@@ -110,6 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (result?.status === 'logged_in') {
       const { authToken: tok } = await chrome.storage.local.get('authToken');
       showMain(); updateStatus('connected');
+      setAccount({ email: document.getElementById('loginEmail').value });
       loadResumeStatus(tok);
     } else {
       showError(result?.message || 'Login failed');
@@ -208,6 +245,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function showAuth() { authSection.classList.remove('hidden'); mainSection.classList.add('hidden'); }
   function showMain() { authSection.classList.add('hidden'); mainSection.classList.remove('hidden'); }
+  function setAccount(profile) {
+    const email = profile?.email;
+    if (!email) return;
+    const emailEl = document.getElementById('accountEmail');
+    const avatarEl = document.getElementById('accountAvatar');
+    if (emailEl) emailEl.textContent = email;
+    if (avatarEl) avatarEl.textContent = email.charAt(0).toUpperCase();
+  }
   function showError(msg) { authError.textContent = msg; authError.classList.remove('hidden'); }
   function updateStatus(s) {
     statusIndicator.className = `status-indicator status-${s}`;

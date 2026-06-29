@@ -197,10 +197,26 @@ async def backfill_profile_from_resume(
     if not profile:
         return
 
+    # List fields accumulate (merge + dedupe); scalar fields only fill when empty.
+    LIST_FIELDS = {"skills", "certifications", "languages"}
+
     updated = False
     for resume_key, profile_key in RESUME_TO_PROFILE_MAPPING.items():
         resume_value = parsed_data.get(resume_key)
-        if resume_value is not None and getattr(profile, profile_key, None) is None:
+        if resume_value is None:
+            continue
+
+        if profile_key in LIST_FIELDS and isinstance(resume_value, list):
+            existing = list(getattr(profile, profile_key, None) or [])
+            lowered = {str(s).lower() for s in existing}
+            for s in resume_value:
+                if s and str(s).lower() not in lowered:
+                    existing.append(s)
+                    lowered.add(str(s).lower())
+            if existing != (getattr(profile, profile_key, None) or []):
+                setattr(profile, profile_key, existing)
+                updated = True
+        elif getattr(profile, profile_key, None) is None:
             setattr(profile, profile_key, resume_value)
             updated = True
 
