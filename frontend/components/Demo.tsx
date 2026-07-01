@@ -4,13 +4,20 @@ import { useRef, useState } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 
 const PIPELINE = [
-  { label: "Full Name", source: "profile", value: "Shishir Singh", ms: 2 },
-  { label: "Email", source: "profile", value: "singhshishir4727@gmail.com", ms: 3 },
-  { label: "Years of Experience", source: "default_rule", value: "3", ms: 1 },
-  { label: "Expected Salary", source: "profile", value: "1200000", ms: 4 },
-  { label: "Notice Period (days)", source: "history", value: "30", ms: 6 },
-  { label: "Are you legally authorized?", source: "llm_infer", value: "Yes", ms: 312 },
+  { label: "Full Name", source: "profile", value: "Shishir Singh", baseMs: 2 },
+  { label: "Email", source: "profile", value: "shishir.s@gmail.com", baseMs: 3 },
+  { label: "Years of Experience", source: "default_rule", value: "3", baseMs: 1 },
+  { label: "Expected Salary", source: "profile", value: "1200000", baseMs: 4 },
+  { label: "Notice Period (days)", source: "history", value: "30", baseMs: 6 },
+  { label: "Are you legally authorized?", source: "llm_infer", value: "Yes", baseMs: 312 },
 ];
+
+// Small run-to-run jitter so re-running the pipeline shows real (if simulated)
+// variance instead of replaying the exact same numbers every time.
+function jitter(ms: number) {
+  const factor = 0.82 + Math.random() * 0.36; // ±18%
+  return Math.max(1, Math.round(ms * factor));
+}
 
 const SOURCE_COLORS: Record<string, string> = {
   profile: "#4ade80",
@@ -34,12 +41,14 @@ export default function Demo() {
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
   const [visible, setVisible] = useState<number[]>([]);
+  const [runTimes, setRunTimes] = useState<number[]>(PIPELINE.map(f => f.baseMs));
 
   const runDemo = () => {
     if (running) return;
     setRunning(true);
     setDone(false);
     setVisible([]);
+    setRunTimes(PIPELINE.map(f => jitter(f.baseMs)));
 
     PIPELINE.forEach((_, i) => {
       setTimeout(() => {
@@ -134,7 +143,7 @@ export default function Demo() {
           {/* Header row */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: "1fr 90px 130px 60px",
+            gridTemplateColumns: "1fr 90px minmax(0, 180px) 60px",
             gap: 16, padding: "0 8px 12px",
             borderBottom: "1px solid rgba(255,255,255,0.05)",
             marginBottom: 8,
@@ -156,31 +165,39 @@ export default function Demo() {
                     transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "1fr 90px 130px 60px",
+                      gridTemplateColumns: "1fr 90px minmax(0, 180px) 60px",
                       gap: 16,
                       padding: "12px 8px",
                       borderRadius: 8,
                       transition: "background 0.2s",
+                      alignItems: "center",
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.025)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                   >
-                    <span style={{ fontSize: 14, color: "#cbd5e1", fontWeight: 500 }}>{field.label}</span>
-                    <span>
+                    <span style={{ fontSize: 14, color: "#cbd5e1", fontWeight: 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{field.label}</span>
+                    <span style={{ minWidth: 0 }}>
                       <span style={{
                         fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 6,
                         background: `${SOURCE_COLORS[field.source]}15`,
                         color: SOURCE_COLORS[field.source],
                         border: `1px solid ${SOURCE_COLORS[field.source]}30`,
+                        whiteSpace: "nowrap",
                       }}>
                         {SOURCE_LABELS[field.source]}
                       </span>
                     </span>
-                    <span style={{ fontSize: 13, color: "#94a3b8", fontFamily: "monospace" }}>
+                    <span
+                      title={field.value}
+                      style={{
+                        fontSize: 13, color: "#94a3b8", fontFamily: "monospace",
+                        minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}
+                    >
                       {field.value}
                     </span>
-                    <span style={{ fontSize: 12, color: field.ms > 100 ? "#22d3ee" : "#4ade80" }}>
-                      {field.ms}ms
+                    <span style={{ fontSize: 12, color: runTimes[i] > 100 ? "#22d3ee" : "#4ade80", whiteSpace: "nowrap" }}>
+                      {runTimes[i]}ms
                     </span>
                   </motion.div>
                 )
