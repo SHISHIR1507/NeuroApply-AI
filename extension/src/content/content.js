@@ -121,8 +121,8 @@ window.__neuroapplyLoaded = true;
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-      color: '#fff',
+      background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+      color: '#07070a',
       padding: '14px 20px',
       borderRadius: '12px',
       fontSize: '13.5px',
@@ -150,6 +150,7 @@ window.__neuroapplyLoaded = true;
     _observerActive = false;
     clearTimeout(_debounceTimer);
     clearInterval(_heartbeat);
+    try { AtsFab.hide(); } catch {}
     showReloadBanner();
   }
 
@@ -306,12 +307,12 @@ window.__neuroapplyLoaded = true;
     function showLoading() {
       build();
       root.querySelector('.na-ats-num').textContent = '…';
-      root.querySelector('.na-ats-num').style.color = '#818cf8';
+      root.querySelector('.na-ats-num').style.color = '#22d3ee';
       root.querySelector('.na-ats-summary').textContent = 'Analyzing your resume against this job…';
       root.querySelector('.na-chips-matched').innerHTML = '';
       root.querySelector('.na-chips-missing').innerHTML = '';
       const fill = root.querySelector('.na-ats-fill');
-      fill.style.stroke = '#818cf8';
+      fill.style.stroke = '#22d3ee';
       fill.style.strokeDashoffset = CIRC;
     }
 
@@ -349,6 +350,49 @@ window.__neuroapplyLoaded = true;
     }
 
     return { open, close, showLoading, setResult, setError, scheduleClose };
+  })();
+
+  // ── ATS Score FAB ─────────────────────────────────────────────────────
+  // A small persistent floating button that appears directly on any job
+  // posting page, so scoring a job never requires opening the extension
+  // popup — click it right where you're already looking.
+  const AtsFab = (() => {
+    let root = null;
+    let visible = false;
+
+    function build() {
+      if (root) return;
+      root = document.createElement('button');
+      root.id = 'na-ats-fab';
+      root.type = 'button';
+      root.title = 'Score this job against your resume';
+      root.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span>Score this job</span>
+      `;
+      root.addEventListener('click', () => {
+        const jd = getJobDescription();
+        if (!jd || jd.length < 60) return;
+        runAtsScore(jd);
+      });
+      document.body.appendChild(root);
+    }
+
+    function show() {
+      build();
+      if (visible) return;
+      visible = true;
+      void root.offsetWidth;
+      root.classList.add('na-ats-fab-visible');
+    }
+
+    function hide() {
+      if (!root || !visible) return;
+      visible = false;
+      root.classList.remove('na-ats-fab-visible');
+    }
+
+    return { show, hide };
   })();
 
   // ── Modal detection ──────────────────────────────────────────────────
@@ -693,9 +737,25 @@ window.__neuroapplyLoaded = true;
     });
   }
 
+  // ── ATS FAB visibility ────────────────────────────────────────────────
+  // Independent of the autofill enable/disable toggle and of Easy Apply —
+  // shows on any job posting with a readable description, hides while the
+  // Easy Apply modal has focus so the two don't visually compete.
+  function updateAtsFabVisibility() {
+    if (!isContextValid()) { AtsFab.hide(); return; }
+    const hasDialog = !!document.querySelector('[role="dialog"]');
+    if (hasDialog) { AtsFab.hide(); return; }
+    const title = extractJobTitle();
+    const jd = getJobDescription();
+    if (title && jd && jd.length >= 60) AtsFab.show();
+    else AtsFab.hide();
+  }
+
   // ── Scan for a modal and process it (single source of truth) ─────────
   async function scan() {
-    if (!isContextValid() || !(await isEnabled())) return;
+    if (!isContextValid()) return;
+    updateAtsFabVisibility(); // independent of the autofill toggle below
+    if (!(await isEnabled())) return;
 
     // Fast bail: no dialog in DOM → definitely not on Easy Apply.
     // Use a debounced clear — LinkedIn briefly removes the dialog during step
@@ -864,6 +924,9 @@ window.__neuroapplyLoaded = true;
     let _lastUrl = location.href;
     _heartbeat = setInterval(() => {
       if (!isContextValid()) { die(); return; }
+      // ATS FAB visibility is independent of the autofill enable toggle —
+      // check it on every tick regardless of what happens below.
+      updateAtsFabVisibility();
       if (location.href !== _lastUrl) {
         _lastUrl = location.href;
         isProcessing = false;
@@ -874,6 +937,7 @@ window.__neuroapplyLoaded = true;
         scanSoon(600);
       }
     }, 1500);
+    updateAtsFabVisibility(); // don't wait for the first heartbeat tick
 
     // Expose cleanup so a re-injected instance can tear this one down first.
     window.__neuroapplyCleanup = () => {

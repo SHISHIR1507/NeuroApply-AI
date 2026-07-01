@@ -80,38 +80,35 @@
         </div>
       </div>
 
-      <!-- Fill current page -->
+      <!-- Fill current page — the one primary action -->
       <button id="fillNowBtn" class="btn btn-primary fill-now-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:7px">
           <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
         </svg>
         Fill this page
       </button>
 
-      <!-- ATS score of the current job -->
-      <button id="atsBtn" class="btn btn-secondary open-profile-btn">
-        Score this job (ATS)
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px">
-          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-        </svg>
-      </button>
-
-      <!-- Open dashboard (website) -->
-      <button id="dashboardBtn" class="btn btn-primary open-profile-btn">
-        Open Dashboard
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-        </svg>
-      </button>
-
-      <!-- Set up profile via the web chat -->
-      <button id="openProfileBtn" class="btn btn-secondary open-profile-btn">
-        Set up profile with AI
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px">
-          <path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3z"/>
-        </svg>
-      </button>
+      <!-- Quick actions — one compact row instead of 3 stacked boxes -->
+      <div class="quick-actions">
+        <button id="atsBtn" class="qa-btn">
+          <span class="qa-icon qa-icon-cyan">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </span>
+          <span class="qa-label">ATS Score</span>
+        </button>
+        <button id="dashboardBtn" class="qa-btn">
+          <span class="qa-icon qa-icon-amber">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </span>
+          <span class="qa-label">Dashboard</span>
+        </button>
+        <button id="openProfileBtn" class="qa-btn">
+          <span class="qa-icon qa-icon-amber">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3z"/></svg>
+          </span>
+          <span class="qa-label">AI Profile</span>
+        </button>
+      </div>
 
       <!-- Resume Card -->
       <div class="card resume-card">

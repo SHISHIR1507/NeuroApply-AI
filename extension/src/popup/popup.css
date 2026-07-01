@@ -1,12 +1,13 @@
-/* NeuroApply AI — Popup (Aurora Glass) */
+/* NeuroApply AI — Popup (Midnight Amber) */
 
 :root {
-  --bg-primary: #070b1a;
+  --bg-primary: #07070a;
   --text-primary: #f1f5f9;
   --text-secondary: #b4bdd0;
   --text-muted: #6b7690;
-  --accent: #818cf8;
-  --accent-hover: #a5b4fc;
+  --accent: #f59e0b;
+  --accent-hover: #fbbf24;
+  --cyan: #22d3ee;
   --success: #4ade80;
   --warning: #fbbf24;
   --error: #f87171;
@@ -40,12 +41,12 @@ body {
   inset: -45%;
   z-index: 0;
   filter: blur(64px);
-  opacity: 0.6;
+  opacity: 0.55;
   background:
-    radial-gradient(38% 38% at 22% 28%, #6366f1 0%, transparent 60%),
-    radial-gradient(34% 34% at 80% 18%, #8b5cf6 0%, transparent 62%),
-    radial-gradient(44% 44% at 64% 82%, rgba(217, 70, 239, 0.55) 0%, transparent 62%),
-    radial-gradient(40% 40% at 28% 78%, rgba(34, 211, 238, 0.40) 0%, transparent 62%);
+    radial-gradient(38% 38% at 22% 28%, rgba(245, 158, 11, 0.7) 0%, transparent 60%),
+    radial-gradient(34% 34% at 80% 18%, rgba(251, 191, 36, 0.5) 0%, transparent 62%),
+    radial-gradient(44% 44% at 64% 82%, rgba(34, 211, 238, 0.45) 0%, transparent 62%),
+    radial-gradient(40% 40% at 28% 78%, rgba(34, 211, 238, 0.3) 0%, transparent 62%);
   animation: aurora-drift 16s ease-in-out infinite alternate;
 }
 @keyframes aurora-drift {
@@ -60,8 +61,8 @@ body {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(120% 80% at 50% 0%, transparent 40%, rgba(7, 11, 26, 0.65) 100%),
-    radial-gradient(100% 60% at 50% 100%, rgba(7, 11, 26, 0.5) 0%, transparent 60%);
+    radial-gradient(120% 80% at 50% 0%, transparent 40%, rgba(7, 7, 10, 0.65) 100%),
+    radial-gradient(100% 60% at 50% 100%, rgba(7, 7, 10, 0.5) 0%, transparent 60%);
 }
 
 .popup-container {
@@ -94,7 +95,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   padding: 10px 12px;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -110,14 +111,14 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  box-shadow: 0 0 14px rgba(129, 140, 248, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .popup-logo h1 {
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  background: linear-gradient(135deg, #c7d2fe, #a78bfa);
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -155,8 +156,8 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 .toggle-switch input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  box-shadow: 0 0 12px rgba(129, 140, 248, 0.6);
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.55);
 }
 .toggle-switch input:checked + .toggle-slider::before { transform: translateX(18px); }
 
@@ -245,9 +246,9 @@ body {
 }
 .form-group input::placeholder { color: var(--text-muted); }
 .form-group input:focus {
-  border-color: rgba(129, 140, 248, 0.7);
+  border-color: rgba(245, 158, 11, 0.7);
   background: var(--glass-bg-2);
-  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.18), 0 0 18px rgba(129, 140, 248, 0.25);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18), 0 0 18px rgba(245, 158, 11, 0.22);
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────── */
@@ -274,18 +275,18 @@ body {
   position: absolute;
   top: 0; left: -120%;
   width: 80%; height: 100%;
-  background: linear-gradient(110deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  background: linear-gradient(110deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   transform: skewX(-18deg);
   transition: left 0.6s var(--ease);
 }
 .btn:hover::after { left: 130%; }
 
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  color: #07070a;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
-.btn-primary:hover { box-shadow: 0 8px 28px rgba(99, 102, 241, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+.btn-primary:hover { box-shadow: 0 8px 28px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
 
 .btn-secondary {
   background: var(--glass-bg-2);
@@ -294,7 +295,7 @@ body {
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
 }
-.btn-secondary:hover { background: rgba(129, 140, 248, 0.16); border-color: rgba(129, 140, 248, 0.4); }
+.btn-secondary:hover { background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.4); }
 
 .btn-ghost {
   background: transparent;
@@ -329,24 +330,53 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 8px;
-  background: linear-gradient(135deg, #059669, #10b981);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  font-size: 13px;
+  margin-bottom: 10px;
+  font-size: 13.5px;
   letter-spacing: 0.01em;
+  padding: 13px 16px;
 }
-.fill-now-btn:hover { box-shadow: 0 8px 28px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25); }
 .fill-now-btn:disabled { opacity: 0.6; cursor: default; transform: none; }
 .fill-now-btn:disabled::after { display: none; }
 
-/* ── Open profile launcher ────────────────────────────────────────── */
-.open-profile-btn {
+/* ── Quick actions row — replaces 3 stacked full-width buttons ────── */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-bottom: 10px;
+  background: var(--glass-border);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.qa-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 13px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.qa-btn:hover { background: rgba(255, 255, 255, 0.06); }
+.qa-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 10px;
-  font-size: 13px;
-  letter-spacing: 0.01em;
+}
+.qa-icon-amber { background: rgba(245, 158, 11, 0.14); color: var(--accent-hover); }
+.qa-icon-cyan { background: rgba(34, 211, 238, 0.12); color: var(--cyan); }
+.qa-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 /* ── Resume card ──────────────────────────────────────────────────── */
@@ -386,9 +416,9 @@ body {
   justify-content: center;
   font-size: 15px;
   font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  box-shadow: 0 0 12px rgba(129, 140, 248, 0.5);
+  color: #07070a;
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
 }
 .account-info { display: flex; flex-direction: column; min-width: 0; }
 .account-label { font-size: 10.5px; color: var(--text-muted); letter-spacing: 0.02em; }
