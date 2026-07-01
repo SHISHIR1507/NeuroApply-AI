@@ -236,6 +236,31 @@ function simpleHash(str) {
 }
 
 // ------------------------------------------------------------------
+// Backend warm-up
+// ------------------------------------------------------------------
+// Render's free tier spins the backend down after ~15 minutes idle; the
+// first request after that can take 10-30s+ to wake it up. The content
+// script fires this the moment a job posting is opened — well before the
+// user actually clicks Easy Apply — so the cold start (if any) happens
+// while they're still reading the job description, not while they wait
+// on a fill.
+const HEALTH_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '') + '/health';
+let _lastWarmAt = 0;
+const WARM_MIN_INTERVAL = 60000; // don't hammer it more than once a minute
+
+async function warmBackend() {
+  const now = Date.now();
+  if (now - _lastWarmAt < WARM_MIN_INTERVAL) return { status: 'skipped' };
+  _lastWarmAt = now;
+  try {
+    await fetch(HEALTH_URL);
+    return { status: 'ok' };
+  } catch {
+    return { status: 'unreachable' };
+  }
+}
+
+// ------------------------------------------------------------------
 // Message listener
 // ------------------------------------------------------------------
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -247,6 +272,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     'LOGIN': () => handleLogin(request.payload),
     'LOGOUT': () => handleLogout(),
     'GET_AUTH_STATUS': () => getAuthStatus(),
+    'WARM_UP': () => warmBackend(),
   };
 
   const handler = handlers[request.type];
@@ -332,5 +358,17 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     console.warn('[NeuroApply BG] onInstalled handler failed:', e?.message);
   }
 });
+
+// ------------------------------------------------------------------
+// Keep-warm alarm — pings the backend every 10 min so Render's free-tier
+// dyno (sleeps after ~15 min idle) rarely gets the chance to go cold in
+// the first place. chrome.alarms survives service worker suspension, so
+// this fires even when no tab is actively using the extension.
+// ------------------------------------------------------------------
+chrome.alarms.create('na-keep-warm', { periodInMinutes: 10 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'na-keep-warm') warmBackend();
+});
+warmBackend(); // also warm immediately on service worker (re)start
 
 console.log('[NeuroApply] 🧠 Service worker loaded');

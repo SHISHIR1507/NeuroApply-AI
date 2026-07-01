@@ -640,8 +640,8 @@ window.__neuroapplyLoaded = true;
         if (result.unresolved === 0 && await isAutoAdvance()) {
           const nextBtn = findNextButton(modal);
           if (nextBtn) {
-            ChatWidget.say('Auto-advancing to the next step… ➡️', 700);
-            const delay = 1000 + Math.random() * 800; // human-like pacing
+            ChatWidget.say('Auto-advancing to the next step… ➡️', 350);
+            const delay = 450 + Math.random() * 400; // brief human-like pacing, not sluggish
             setTimeout(() => {
               if (!isContextValid()) return;
               // Abort if the user is actively typing in a form field
@@ -737,18 +737,33 @@ window.__neuroapplyLoaded = true;
     });
   }
 
-  // ── ATS FAB visibility ────────────────────────────────────────────────
+  // ── ATS FAB visibility + backend warm-up ──────────────────────────────
   // Independent of the autofill enable/disable toggle and of Easy Apply —
   // shows on any job posting with a readable description, hides while the
   // Easy Apply modal has focus so the two don't visually compete.
+  //
+  // Also fires a one-shot warm-up ping per job: Render's free tier sleeps
+  // after ~15 min idle, and waking it can take 10-30s+. Pinging the moment
+  // a job posting is opened (while the user is still reading it) means
+  // that cold-start delay is usually already gone by the time they click
+  // Easy Apply, instead of stalling the actual fill.
+  let _warmedJobKey = null;
   function updateAtsFabVisibility() {
     if (!isContextValid()) { AtsFab.hide(); return; }
     const hasDialog = !!document.querySelector('[role="dialog"]');
     if (hasDialog) { AtsFab.hide(); return; }
     const title = extractJobTitle();
     const jd = getJobDescription();
-    if (title && jd && jd.length >= 60) AtsFab.show();
-    else AtsFab.hide();
+    if (title && jd && jd.length >= 60) {
+      AtsFab.show();
+      const jobKey = currentJobKey();
+      if (jobKey !== _warmedJobKey) {
+        _warmedJobKey = jobKey;
+        try { chrome.runtime.sendMessage({ type: 'WARM_UP' }); } catch { /* context invalid */ }
+      }
+    } else {
+      AtsFab.hide();
+    }
   }
 
   // ── Scan for a modal and process it (single source of truth) ─────────
@@ -840,7 +855,7 @@ window.__neuroapplyLoaded = true;
 
     isProcessing = false;
     invalidateEnabledCache();
-    scanSoon(900); // let LinkedIn render the next step first
+    scanSoon(550); // just enough for LinkedIn's step-transition animation
   }, true);
 
   // ── Back / forward navigation ────────────────────────────────────────
