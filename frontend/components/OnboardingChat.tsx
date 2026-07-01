@@ -30,20 +30,44 @@ function isEmpty(v: unknown) {
   return v == null || v === "" || (Array.isArray(v) && v.length === 0);
 }
 
-function buildGreeting(profile?: Profile | null): string {
+/* Greeting arrives as a short sequence of messages, not one info-dump —
+   feels like a person saying hi before getting down to business. */
+function buildGreetingSequence(profile?: Profile | null): string[] {
+  const firstName = profile?.full_name?.split(" ")[0];
+  const hello = firstName ? `Hey ${firstName}! 👋 How's it going?` : "Hey there! 👋 How's it going?";
+
   if (!profile) {
-    return "Hey! 👋 I'm Kippy, your NeuroApply assistant. Let's build your profile so I can autofill job applications for you. First up — **what's your current role, and how many years of experience do you have?**";
+    return [
+      hello,
+      "I'm Kippy — I'll help you build your profile so I can autofill job applications for you.",
+      "Ready to get started? First up — **what's your current role, and how many years of experience do you have?**",
+    ];
   }
+
   const missing = NEEDED.filter((f) => isEmpty(profile[f.key]));
   const filledCount = NEEDED.length - missing.length;
+
   if (missing.length === 0) {
-    return "Your profile looks complete ✅ — I've got everything I need. Tell me anything you'd like to **update or add**, or head to your dashboard.";
+    return [
+      hello,
+      "Your profile looks complete ✅ — I've got everything I need. Tell me anything you'd like to **update or add**, or head to your dashboard.",
+    ];
   }
   if (filledCount >= 2) {
-    return `Nice — I've already got ${filledCount} things from your profile ✓. Just a few gaps left. First: **${missing[0].q}**`;
+    return [
+      hello,
+      `I've already got ${filledCount} things from your profile ✓ — just a few gaps left.`,
+      `First: **${missing[0].q}**`,
+    ];
   }
-  return `Hey! 👋 Let's finish setting up your profile. First: **${missing[0].q}**`;
+  return [
+    hello,
+    "Ready to finish setting up your profile? Shouldn't take long.",
+    `First: **${missing[0].q}**`,
+  ];
 }
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 const STARTERS = [
   "I'm a Frontend Engineer with 3 years of experience",
@@ -177,17 +201,39 @@ export default function OnboardingChat({ profile, onFieldsSaved }: { profile?: P
 
   const lastMsg = messages[messages.length - 1];
   const avatarState: AvatarState =
-    booting                                        ? "thinking" :
-    busy && lastMsg?.text === ""                   ? "thinking" :
-    busy                                           ? "talking"  :
-                                                     "idle";
+    booting                                         ? "thinking" :
+    lastMsg?.role === "bot" && lastMsg?.text === "" ? "thinking" :
+    busy                                             ? "talking"  :
+                                                       "idle";
+
+  const [greetingDone, setGreetingDone] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setMessages([{ role: "bot", text: buildGreeting(profile) }]);
+    let cancelled = false;
+    const sequence = buildGreetingSequence(profile);
+
+    (async () => {
+      await sleep(700);
+      if (cancelled) return;
       setBooting(false);
-    }, 750);
-    return () => clearTimeout(t);
+      setMessages(m => [...m, { role: "bot", text: sequence[0] }]);
+
+      for (let i = 1; i < sequence.length; i++) {
+        await sleep(280);
+        if (cancelled) return;
+        setMessages(m => [...m, { role: "bot", text: "" }]); // typing placeholder
+        await sleep(650 + Math.random() * 450);
+        if (cancelled) return;
+        setMessages(m => {
+          const c = [...m];
+          c[c.length - 1] = { role: "bot", text: sequence[i] };
+          return c;
+        });
+      }
+      if (!cancelled) setGreetingDone(true);
+    })();
+
+    return () => { cancelled = true; };
   }, [profile]);
 
   useEffect(() => {
@@ -243,7 +289,7 @@ export default function OnboardingChat({ profile, onFieldsSaved }: { profile?: P
   }
 
   const hasData     = !!profile && NEEDED.some(f => !isEmpty(profile[f.key]));
-  const showStarters = messages.length <= 1 && !busy && !booting && !hasData;
+  const showStarters = greetingDone && !busy && !hasData && !messages.some(m => m.role === "user");
 
   return (
     <div style={shell}>
