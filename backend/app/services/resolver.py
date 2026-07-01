@@ -19,6 +19,7 @@ Observability:
 import asyncio
 import json
 import random
+import re as _re
 import time
 from typing import Optional, Union
 from uuid import UUID
@@ -55,12 +56,55 @@ _ACADEMIC_KEYWORDS = [
     "marks in", "percentage in",
 ]
 
+# Matches "... experience in/with/working with <topic>" so a named skill can be
+# checked against the profile instead of blindly reusing total years worked.
+_EXPERIENCE_TOPIC_RE = _re.compile(
+    r"experience\s+(?:do you have\s+)?(?:in|with|working with|working in|of)\s+"
+    r"([A-Za-z0-9\.\+\#/&\- ]{2,60}?)(?=\s*[\?\.]|\s*\(|\s*$)",
+    _re.IGNORECASE,
+)
+
+
+def _extract_experience_topic(label: str) -> Optional[str]:
+    """
+    Pull the named skill/technology out of a question like "How many years of
+    experience do you have in Blockchain Development?". Returns None for a
+    generic question with no named topic ("How many years of experience do
+    you have?").
+    """
+    m = _EXPERIENCE_TOPIC_RE.search(label)
+    return m.group(1).strip() if m else None
+
+
+def _topic_matches_profile(topic: str, profile: Optional[dict]) -> bool:
+    """Cheap substring check: is this named skill actually one the user has?"""
+    if not profile:
+        return False
+    skills = profile.get("skills") if isinstance(profile, dict) else getattr(profile, "skills", None)
+    title = profile.get("current_title") if isinstance(profile, dict) else getattr(profile, "current_title", None)
+    topic_lower = topic.lower()
+    for skill in (skills or []):
+        s = str(skill).lower()
+        if topic_lower in s or s in topic_lower:
+            return True
+    if title and (topic_lower in title.lower() or title.lower() in topic_lower):
+        return True
+    return False
+
 
 def _apply_default_rules(label: str, profile: Optional[dict] = None) -> Optional[str]:
     """Return a fast default answer for well-known numeric question patterns."""
     lowered = label.lower()
 
     if any(kw in lowered for kw in _EXPERIENCE_KEYWORDS):
+        topic = _extract_experience_topic(label)
+        if topic and not _topic_matches_profile(topic, profile):
+            # A specific, named skill/technology that doesn't show up anywhere
+            # in this profile — reusing the person's total years of experience
+            # would be actively misleading (e.g. answering "3" for Blockchain
+            # Development when their stack is React/Node). Let the LLM step
+            # reason over the full profile instead of guessing here.
+            return None
         if profile:
             yoe = profile.get("years_of_experience") if isinstance(profile, dict) else getattr(profile, "years_of_experience", None)
             if yoe is not None:
@@ -79,9 +123,17 @@ def _apply_default_rules(label: str, profile: Optional[dict] = None) -> Optional
 _LLM_SYSTEM_PROMPT = (
     "You fill job application form fields. Reply with ONLY the answer — no explanation, no units.\n"
     "- Skill/proficiency rating (any scale): reply 8\n"
-    "- Yes/No: answer based on profile\n"
+    "- Yes/No: answer ONLY from explicit evidence in the profile (education, skills, titles, etc).\n"
+    "  Degree-level equivalence: B.Tech, B.E., B.Sc, BCA, BA, BBA, BCom count as a bachelor's degree;\n"
+    "  M.Tech, M.E., M.Sc, MCA, MBA, MA count as a master's degree.\n"
+    "  NEVER answer 'No' just because the profile is silent on the topic — silence is not evidence of\n"
+    "  absence. If the profile has no data bearing on the question either way, reply null instead of\n"
+    "  guessing — a wrong 'No' on an eligibility question (degree, sponsorship, authorization, etc.)\n"
+    "  can get the application auto-rejected, which is worse than leaving it for the user to answer.\n"
     "- Dropdown: pick the best matching option exactly as written\n"
-    "- Number field: plain digits only, no commas or text\n"
+    "- Number field: plain digits only, no commas or text. If asked about experience in a specific named\n"
+    "  skill/technology that does not appear anywhere in the profile's skills, titles, or experience,\n"
+    "  reply 0 rather than the person's total years of experience in an unrelated field.\n"
     "- If truly no relevant info exists: reply null"
 )
 
@@ -135,8 +187,6 @@ PROFILE_DIRECT_FIELDS = {
     "linkedin_url", "github_url", "portfolio_url",
 }
 
-
-import re as _re
 
 def _clean_profile_value(canonical_key: str, raw_value) -> str:
     """Post-process profile values before returning them as form answers."""
