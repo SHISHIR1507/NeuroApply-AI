@@ -31,43 +31,81 @@ function isEmpty(v: unknown) {
 }
 
 /* Greeting arrives as a short sequence of messages, not one info-dump —
-   feels like a person saying hi before getting down to business. */
-function buildGreetingSequence(profile?: Profile | null): string[] {
+   feels like a person saying hi before getting down to business. When
+   `gated` is true, the first real question is held back until the user
+   confirms they're ready — it's not asked up front. */
+type GreetingPlan = { intro: string[]; gated: boolean; followUp?: string };
+
+function buildGreetingPlan(profile?: Profile | null): GreetingPlan {
   const firstName = profile?.full_name?.split(" ")[0];
   const hello = firstName ? `Hey ${firstName}! 👋 How's it going?` : "Hey there! 👋 How's it going?";
 
   if (!profile) {
-    return [
-      hello,
-      "I'm Kippy — I'll help you build your profile so I can autofill job applications for you.",
-      "Ready to get started? First up — **what's your current role, and how many years of experience do you have?**",
-    ];
+    return {
+      intro: [
+        hello,
+        "I'm Kippy — I'll help you build your profile so I can autofill job applications for you. Ready to get started?",
+      ],
+      gated: true,
+      followUp: "Awesome — first up, **what's your current role, and how many years of experience do you have?**",
+    };
   }
 
   const missing = NEEDED.filter((f) => isEmpty(profile[f.key]));
   const filledCount = NEEDED.length - missing.length;
 
   if (missing.length === 0) {
-    return [
-      hello,
-      "Your profile looks complete ✅ — I've got everything I need. Tell me anything you'd like to **update or add**, or head to your dashboard.",
-    ];
+    return {
+      intro: [
+        hello,
+        "Your profile looks complete ✅ — I've got everything I need. Tell me anything you'd like to **update or add**, or head to your dashboard.",
+      ],
+      gated: false,
+    };
   }
   if (filledCount >= 2) {
-    return [
-      hello,
-      `I've already got ${filledCount} things from your profile ✓ — just a few gaps left.`,
-      `First: **${missing[0].q}**`,
-    ];
+    return {
+      intro: [hello, `I've already got ${filledCount} things from your profile ✓ — just a few gaps left. Ready to continue?`],
+      gated: true,
+      followUp: `Great — first: **${missing[0].q}**`,
+    };
   }
-  return [
-    hello,
-    "Ready to finish setting up your profile? Shouldn't take long.",
-    `First: **${missing[0].q}**`,
-  ];
+  return {
+    intro: [hello, "Ready to finish setting up your profile? Shouldn't take long."],
+    gated: true,
+    followUp: `Perfect — first: **${missing[0].q}**`,
+  };
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+/* Reveals a bot message the same way the real streaming chat does: a brief
+   typing pause, then the text appears progressively in word-sized chunks
+   rather than popping in whole. `cancelled` is checked between every await
+   so an unmount/profile-change mid-reveal doesn't keep writing to state. */
+async function revealBotMessage(
+  text: string,
+  setMessages: React.Dispatch<React.SetStateAction<Msg[]>>,
+  cancelled: { current: boolean },
+  thinkMs = 550,
+) {
+  setMessages(m => [...m, { role: "bot", text: "" }]);
+  await sleep(thinkMs + Math.random() * 350);
+  if (cancelled.current) return;
+
+  const chunks = text.split(/(\s+)/); // keep whitespace so rejoining is exact
+  let acc = "";
+  for (const chunk of chunks) {
+    if (cancelled.current) return;
+    acc += chunk;
+    setMessages(m => {
+      const c = [...m];
+      c[c.length - 1] = { role: "bot", text: acc };
+      return c;
+    });
+    await sleep(35 + Math.random() * 55);
+  }
+}
 
 const STARTERS = [
   "I'm a Frontend Engineer with 3 years of experience",
@@ -207,33 +245,41 @@ export default function OnboardingChat({ profile, onFieldsSaved }: { profile?: P
                                                        "idle";
 
   const [greetingDone, setGreetingDone] = useState(false);
+  // True while we're waiting on the user's "yes, let's go" before asking the
+  // first real profile question — their reply here is just a confirmation,
+  // not sent to the AI.
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+  const pendingFollowUp = useRef<string | null>(null);
+  const cancelRef = useRef({ current: false });
 
   useEffect(() => {
-    let cancelled = false;
-    const sequence = buildGreetingSequence(profile);
+    const cancelled = { current: false };
+    cancelRef.current = cancelled;
+    const plan = buildGreetingPlan(profile);
 
     (async () => {
       await sleep(700);
-      if (cancelled) return;
+      if (cancelled.current) return;
       setBooting(false);
-      setMessages(m => [...m, { role: "bot", text: sequence[0] }]);
+      setBusy(true);
 
-      for (let i = 1; i < sequence.length; i++) {
-        await sleep(280);
-        if (cancelled) return;
-        setMessages(m => [...m, { role: "bot", text: "" }]); // typing placeholder
-        await sleep(650 + Math.random() * 450);
-        if (cancelled) return;
-        setMessages(m => {
-          const c = [...m];
-          c[c.length - 1] = { role: "bot", text: sequence[i] };
-          return c;
-        });
+      for (let i = 0; i < plan.intro.length; i++) {
+        if (i > 0) await sleep(280);
+        if (cancelled.current) return;
+        await revealBotMessage(plan.intro[i], setMessages, cancelled, i === 0 ? 0 : 550);
       }
-      if (!cancelled) setGreetingDone(true);
+      setBusy(false);
+      if (cancelled.current) return;
+
+      if (plan.gated && plan.followUp) {
+        pendingFollowUp.current = plan.followUp;
+        setAwaitingConfirm(true);
+      } else {
+        setGreetingDone(true);
+      }
     })();
 
-    return () => { cancelled = true; };
+    return () => { cancelled.current = true; };
   }, [profile]);
 
   useEffect(() => {
@@ -244,6 +290,24 @@ export default function OnboardingChat({ profile, onFieldsSaved }: { profile?: P
     const msg = text.trim();
     if (!msg || busy) return;
     setInput("");
+
+    // Still waiting on "ready to get started?" — this reply is just the
+    // confirmation gate opening, not a real answer. Don't send it to the AI;
+    // just unlock the first actual question.
+    if (awaitingConfirm) {
+      setMessages(m => [...m, { role: "user", text: msg }]);
+      setAwaitingConfirm(false);
+      const followUp = pendingFollowUp.current;
+      pendingFollowUp.current = null;
+      if (followUp) {
+        setBusy(true);
+        await revealBotMessage(followUp, setMessages, cancelRef.current, 450);
+        setBusy(false);
+      }
+      setGreetingDone(true);
+      return;
+    }
+
     setBusy(true);
     setMessages(m => [...m, { role: "user", text: msg }]);
     history.current.push({ role: "user", content: msg });
