@@ -194,7 +194,7 @@ const FieldExtractor = (() => {
   }
 
   // Public API
-  return { extractFields, findLabel };
+  return { extractFields, findLabel, findRadioGroupLabel };
 })();
 
 // Make available to content.js

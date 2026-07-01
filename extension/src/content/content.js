@@ -723,7 +723,13 @@ window.__neuroapplyLoaded = true;
         if (!value) return;
         if (!input.closest('[data-neuroapply-modal]')) return;
 
-        const label = window.FieldExtractor.findLabel(input);
+        // Radio buttons: findLabel() returns the per-option text ("Yes"/"No"),
+        // not the question ("Do you have a bachelor's degree?"). Using it here
+        // would save the correction under the wrong key, so the next occurrence
+        // of the same question would miss the cache and repeat the wrong answer.
+        const label = input.type === 'radio'
+          ? (window.FieldExtractor.findRadioGroupLabel(input) || window.FieldExtractor.findLabel(input))
+          : window.FieldExtractor.findLabel(input);
         if (!label) return;
 
         try {
