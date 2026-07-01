@@ -12,6 +12,11 @@ window.__neuroapplyLoaded = true;
 (() => {
   let isProcessing = false;
   const processedSignatures = new Set();
+  // How many times we've auto-retried each signature after a transient
+  // failure (service worker cold-start, brief connection blip). Capped so a
+  // persistently broken backend doesn't retry forever.
+  const retryCounts = new Map();
+  const MAX_AUTO_RETRIES = 2;
   let _debounceTimer = null;
   let _observerActive = false;
   let _heartbeat = null;
@@ -30,6 +35,7 @@ window.__neuroapplyLoaded = true;
     if (_clearSigTimer) return; // already scheduled
     _clearSigTimer = setTimeout(() => {
       processedSignatures.clear();
+      retryCounts.clear();
       _clearSigTimer = null;
     }, ms);
   }
@@ -611,10 +617,26 @@ window.__neuroapplyLoaded = true;
       const timedOut = err?.message === 'resolve_timeout';
       console.error('[NeuroApply] Error processing modal:', err);
       ChatWidget.stopTyping();
-      ChatWidget.say(timedOut
-        ? '⏱ Backend took too long. Click <b>Fill this page</b> to retry.'
-        : 'Something went wrong — check the console.');
-      ChatWidget.scheduleClose(6000);
+
+      // This is a transient failure (service worker cold-start, brief
+      // messaging/connection blip) — not a real backend error. Unlike the
+      // `response?.error` branch above, we must NOT leave the signature
+      // marked "processed", or autofill silently never runs again on this
+      // step until the user manually refreshes the tab.
+      const attempts = retryCounts.get(fieldSignature) || 0;
+      processedSignatures.delete(fieldSignature);
+
+      if (attempts < MAX_AUTO_RETRIES) {
+        retryCounts.set(fieldSignature, attempts + 1);
+        ChatWidget.say(timedOut ? '⏱ Taking a bit long — retrying…' : 'Hit a snag — retrying…');
+        ChatWidget.scheduleClose(4000);
+        scanSoon(1200 * (attempts + 1)); // backoff: 1.2s, then 2.4s
+      } else {
+        ChatWidget.say(timedOut
+          ? '⏱ Backend took too long. Click <b>Fill this page</b> to retry.'
+          : 'Something went wrong — click <b>Fill this page</b> to retry.');
+        ChatWidget.scheduleClose(6000);
+      }
     } finally {
       isProcessing = false;
     }
@@ -768,6 +790,7 @@ window.__neuroapplyLoaded = true;
     if (!isContextValid()) return;
     isProcessing = false;
     processedSignatures.clear();
+    retryCounts.clear();
     lastCompany = null;
     lastFilledTotal = 0;
     scanSoon(700);
@@ -793,6 +816,7 @@ window.__neuroapplyLoaded = true;
 
       isProcessing = false;
       processedSignatures.clear();
+      retryCounts.clear();
       invalidateEnabledCache();
 
       const modal = findEasyApplyModal();
@@ -817,6 +841,7 @@ window.__neuroapplyLoaded = true;
       invalidateEnabledCache();
       if (changes.neuroapplyEnabled.newValue !== false) {
         processedSignatures.clear(); // force a fresh fill after enabling
+        retryCounts.clear();
         startObserver();            // starts observer (if needed) + scans now
       } else {
         stopObserver();
@@ -843,6 +868,7 @@ window.__neuroapplyLoaded = true;
         _lastUrl = location.href;
         isProcessing = false;
         processedSignatures.clear();
+        retryCounts.clear();
         lastCompany = null;
         lastFilledTotal = 0;
         scanSoon(600);
